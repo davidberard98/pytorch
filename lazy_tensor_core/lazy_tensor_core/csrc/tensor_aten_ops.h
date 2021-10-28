@@ -330,9 +330,6 @@ void index_put_(LazyTensor& input, const LazyTensor& canonical_base,
                 const LazyTensor& values, bool accumulate,
                 c10::ArrayRef<int64_t> result_permutation);
 
-LazyTensor index_select(const LazyTensor& input, int64_t dim,
-                        const LazyTensor& index);
-
 LazyTensor inverse(const LazyTensor& input);
 
 LazyTensor isnan(const LazyTensor& input);

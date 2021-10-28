@@ -24,6 +24,7 @@ full_codegen:
   - frac
   - gelu
   - gelu_backward
+  - index_select
   - kl_div_backward
   - log2
   - log_sigmoid_backward
@@ -113,7 +114,6 @@ supported:
   - gt.Tensor
   - lt.Scalar
   - lt.Tensor
-  - index_select
   - alias
   - tanh_backward
 autograd:

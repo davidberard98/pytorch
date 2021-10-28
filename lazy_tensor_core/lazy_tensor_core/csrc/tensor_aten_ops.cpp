@@ -49,7 +49,6 @@
 #include "lazy_tensor_core/csrc/ops/hardshrink.h"
 #include "lazy_tensor_core/csrc/ops/hardtanh_backward.h"
 #include "lazy_tensor_core/csrc/ops/index_ops.h"
-#include "lazy_tensor_core/csrc/ops/index_select.h"
 #include "lazy_tensor_core/csrc/ops/kth_value.h"
 #include "lazy_tensor_core/csrc/ops/l1_loss.h"
 #include "lazy_tensor_core/csrc/ops/l1_loss_backward.h"
@@ -989,15 +988,6 @@ void index_put_(LazyTensor& input, const LazyTensor& canonical_base,
                 c10::ArrayRef<int64_t> result_permutation) {
   input.SetIrValue(IndexPutByTensors(canonical_base, indices, start_dim, values,
                                      accumulate, result_permutation));
-}
-
-LazyTensor index_select(const LazyTensor& input, int64_t dim,
-                        const LazyTensor& index) {
-  torch::lazy::Value index_value = EnsureRank1(index.GetIrValue());
-  return input.CreateFrom(torch::lazy::MakeNode<ir::ops::IndexSelect>(
-      input.GetIrValue(),
-      Helpers::GetCanonicalDimensionIndex(dim, input.shape().get().rank()),
-      index_value));
 }
 
 LazyTensor inverse(const LazyTensor& input) {

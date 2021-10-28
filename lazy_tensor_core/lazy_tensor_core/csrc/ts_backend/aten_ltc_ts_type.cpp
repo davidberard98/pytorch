@@ -437,14 +437,6 @@ at::Tensor LazyNativeFunctions::gt(const at::Tensor& self,
       bridge::GetLtcTensor(self), bridge::GetLtcTensor(other)));
 }
 
-at::Tensor LazyNativeFunctions::index_select(const at::Tensor& self,
-                                             int64_t dim,
-                                             const at::Tensor& index) {
-  LTC_FN_COUNTER("lazy::");
-  return bridge::AtenFromLtcTensor(lazy_tensor_aten_ops::index_select(
-      bridge::GetLtcTensor(self), dim, bridge::GetLtcTensor(index)));
-}
-
 at::Tensor LazyNativeFunctions::le(const at::Tensor& self,
                                    const at::Scalar& other) {
   LTC_FN_COUNTER("lazy::");
