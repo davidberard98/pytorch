@@ -93,7 +93,7 @@ def process_signature(line: str) -> str:
         tokens[i] = token.strip(' ')
         if token == "cls":
             tokens[i] = "self"
-        elif i > 0 and ("self" == tokens[i-1]) and (tokens[i][0] != "*"):
+        elif i > 0 and ("self" == tokens[i - 1]) and (tokens[i][0] != "*"):
             # Remove the datapipe after 'self' or 'cls' unless it has '*'
             tokens[i] = ""
         elif "Callable =" in token:  # Remove default argument if it is a function
