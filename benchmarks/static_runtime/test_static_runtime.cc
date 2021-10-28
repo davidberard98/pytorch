@@ -830,7 +830,7 @@ TEST(StaticRuntime, DeepWide) {
 
       // run static runtime
       std::vector<c10::IValue> input_tensors({ad_emb_packed, user_emb, wide});
-      auto outputs = smod(input_tensors, {}).toTuple()->elements();
+      auto outputs = smod(input_tensors, {}).toTupleRef().elements();
       ASSERT_TRUE(outputs.size() > 0);
       at::Tensor output_2 = outputs[0].toTensor();
       smod.runtime().check_for_memory_leak();
@@ -966,7 +966,7 @@ TEST(StaticRuntime, CleanUpMemory) {
               // run static runtime
               std::vector<c10::IValue> input_tensors(
                   {ad_emb_packed, user_emb, wide});
-              auto outputs = runtime(input_tensors, {}).toTuple()->elements();
+              auto outputs = runtime(input_tensors, {}).toTupleRef().elements();
               ASSERT_TRUE(outputs.size() > 0);
               auto output_2 = outputs[0].toTensor();
               runtime.check_for_memory_leak();
@@ -1026,12 +1026,12 @@ TEST(
   {
     IValue tuple = runtime(args, {});
     ASSERT_TRUE(tuple.isTuple());
-    ASSERT_EQ(tuple.toTuple()->elements().size(), 1);
+    ASSERT_EQ(tuple.toTupleRef().elements().size(), 1);
     // Do not manage intput value.
     EXPECT_FALSE(runtime.isManagedOutputTensor(args[0]));
     // Do not manage direct output value.
     EXPECT_FALSE(runtime.isManagedOutputTensor(tuple));
-    IValue element = tuple.toTuple()->elements()[0];
+    IValue element = tuple.toTupleRef().elements()[0];
     // Tensor to be managed, but not yet from the profile run.
     EXPECT_FALSE(runtime.isManagedOutputTensor(element));
     tuple = IValue();
@@ -1042,12 +1042,12 @@ TEST(
   {
     IValue tuple = runtime(args, {});
     ASSERT_TRUE(tuple.isTuple());
-    ASSERT_EQ(tuple.toTuple()->elements().size(), 1);
+    ASSERT_EQ(tuple.toTupleRef().elements().size(), 1);
     // Do not manage intput value.
     EXPECT_FALSE(runtime.isManagedOutputTensor(args[0]));
     // Do not manage direct output value.
     EXPECT_FALSE(runtime.isManagedOutputTensor(tuple));
-    IValue element = tuple.toTuple()->elements()[0];
+    IValue element = tuple.toTupleRef().elements()[0];
     // Tensor to be managed, but not yet from the profile run.
     EXPECT_TRUE(runtime.isManagedOutputTensor(element));
     tuple = IValue();
