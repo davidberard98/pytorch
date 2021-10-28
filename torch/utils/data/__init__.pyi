@@ -13,7 +13,7 @@ from .dataset import (
     ConcatDataset as ConcatDataset,
     DataChunk as DataChunk,
     Dataset as Dataset,
-    MapDataset as MapDataPipe,
+    MapDataPipe as MapDataPipe,
     DFIterDataPipe as DFIterDataPipe,
     IterableDataset as IterableDataset,
     IterDataPipe as IterDataPipe,

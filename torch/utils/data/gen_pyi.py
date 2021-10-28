@@ -119,6 +119,7 @@ for method_name, signature in methods_and_signatures.items():
     # method_definitions.append(f"def {method_name}({signature}) -> {output_type}: ...")
     method_definitions.append(f"def {method_name}({signature}): ...")
 
+method_definitions.sort()
 fm = FileManager(install_dir='.', template_dir='.', dry_run=False)
 fm.write_with_template(filename="dataset.pyi",
                        template_fn="dataset.pyi.in",
