@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Set
 from tools.codegen.gen import FileManager
 
 """
@@ -16,7 +16,7 @@ files_to_exclude = {"__init__.py", "utils.py"}
 deprecated_files = {"httpreader.py", "linereader.py", "tararchivereader.py", "ziparchivereader.py"}
 
 
-def find_file_paths(dir_path: str) -> List[str]:
+def find_file_paths(dir_path: str) -> Set[str]:
     all_files = os.listdir(dir_path)
     python_files = {fname for fname in all_files if ".py" == fname[-3:]}
     filter_files = {fname for fname in python_files if fname not in files_to_exclude and fname not in deprecated_files}
@@ -99,8 +99,8 @@ def process_signature(line: str) -> str:
         elif "Callable =" in token:  # Remove default argument if it is a function
             head, default_arg = token.rsplit("=", 2)
             tokens[i] = head.strip(' ') + "= ..."
-    tokens: List[str] = [t for t in tokens if t != ""]
-    line: str = ', '.join(tokens)
+    tokens = [t for t in tokens if t != ""]
+    line = ', '.join(tokens)
     return line
 
 
