@@ -39,6 +39,7 @@ class IterableDataset(Dataset[T_co], metaclass=_DataPipeMeta):
     def set_reduce_ex_hook(cls, hook_fn: Any) -> None: ...
     ${IterableDataPipeMethods}
 
+IterDataPipe = IterableDataset
 
 class DFIterDataPipe(IterableDataset): ...
 
