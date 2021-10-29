@@ -25,6 +25,8 @@ full_codegen:
   - gelu
   - gelu_backward
   - kl_div_backward
+  - leaky_relu
+  - leaky_relu_backward
   - log2
   - log_sigmoid_backward
   - log_sigmoid_forward
@@ -69,8 +71,6 @@ supported:
   - empty_strided
   - expand
   - fill_.Scalar
-  - leaky_relu
-  - leaky_relu_backward
   - mul.Tensor
   - mul.Scalar
   - native_batch_norm
