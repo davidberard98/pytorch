@@ -7,12 +7,12 @@ def find_file_paths(dir_paths: List[str], files_to_exclude: Set[str]) -> Set[str
     When given a path to a directory, returns the paths to the relevant files within it.
     This function does NOT recursive traverse to subdirectories.
     """
-    paths = []
+    paths: Set[str] = set()
     for dir_path in dir_paths:
         all_files = os.listdir(dir_path)
         python_files = {fname for fname in all_files if ".py" == fname[-3:]}
         filter_files = {fname for fname in python_files if fname not in files_to_exclude}
-        paths.extend({os.path.join(dir_path, fname) for fname in filter_files})
+        paths.update({os.path.join(dir_path, fname) for fname in filter_files})
     return paths
 
 
@@ -79,7 +79,7 @@ def parse_datapipe_file(file_path: str) -> Tuple[Dict[str, str], Dict[str, str]]
     return method_to_signature, method_to_class_name
 
 
-def parse_datapipe_files(file_paths: List[str]) -> Tuple[Dict[str, str], Dict[str, str]]:
+def parse_datapipe_files(file_paths: Set[str]) -> Tuple[Dict[str, str], Dict[str, str]]:
     methods_and_signatures, methods_and_class_names = {}, {}
     for path in file_paths:
         method_to_signature, method_to_class_name = parse_datapipe_file(path)
