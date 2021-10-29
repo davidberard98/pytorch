@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument(
         "--touch_file_dir",
         type=str,
-        help="dir to touch a file with global rank as the filename",
+        help="dir to touch a file with global rank as the file_path",
     )
     return parser.parse_args()
 

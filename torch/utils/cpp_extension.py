@@ -1854,8 +1854,8 @@ def _write_ninja_file_to_build_library(path,
         # '/path/to/file.cpp' -> 'file'
         file_name = os.path.splitext(os.path.basename(source_file))[0]
         if _is_cuda_file(source_file) and with_cuda:
-            # Use a different object filename in case a C++ and CUDA file have
-            # the same filename but different extension (.cpp vs. .cu).
+            # Use a different object file_path in case a C++ and CUDA file have
+            # the same file_path but different extension (.cpp vs. .cu).
             target = f'{file_name}.cuda.o'
         else:
             target = f'{file_name}.o'

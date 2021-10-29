@@ -543,8 +543,8 @@ def load_state_dict_from_url(url, model_dir=None, map_location=None, progress=Tr
         map_location (optional): a function or a dict specifying how to remap storage locations (see torch.load)
         progress (bool, optional): whether or not to display a progress bar to stderr.
             Default: True
-        check_hash(bool, optional): If True, the filename part of the URL should follow the naming convention
-            ``filename-<sha256>.ext`` where ``<sha256>`` is the first eight or more
+        check_hash(bool, optional): If True, the file_path part of the URL should follow the naming convention
+            ``file_path-<sha256>.ext`` where ``<sha256>`` is the first eight or more
             digits of the SHA256 hash of the contents of the file. The hash is used to
             ensure unique names and to verify the contents of the file.
             Default: False

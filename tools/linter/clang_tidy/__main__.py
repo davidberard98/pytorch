@@ -108,7 +108,7 @@ def parse_args() -> argparse.Namespace:
         "--regex",
         action="append",
         default=[],
-        help="Only lint files that match these regular expressions (from the start of the filename). "
+        help="Only lint files that match these regular expressions (from the start of the file_path). "
         "If a pattern starts with a - the search is negated for that pattern.",
     )
     parser.add_argument(

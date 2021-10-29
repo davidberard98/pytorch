@@ -21,7 +21,7 @@ def save(m, f, _extra_files=None):
     Save an offline version of this module for use in a separate process. The
     saved module serializes all of the methods, submodules, parameters, and
     attributes of this module. It can be loaded into the C++ API using
-    ``torch::jit::load(filename)`` or into the Python API with
+    ``torch::jit::load(file_path)`` or into the Python API with
     :func:`torch.jit.load <torch.jit.load>`.
 
     To be able to save a module, it must not make any calls to native Python
@@ -37,7 +37,7 @@ def save(m, f, _extra_files=None):
         m: A :class:`ScriptModule` to save.
         f: A file-like object (has to implement write and flush) or a string
            containing a file name.
-        _extra_files: Map from filename to contents which will be stored as part of `f`.
+        _extra_files: Map from file_path to contents which will be stored as part of `f`.
 
     .. note::
         torch.jit.save attempts to preserve the behavior of some operators
@@ -100,7 +100,7 @@ def load(f, map_location=None, _extra_files=None):
         map_location (string or torch.device): A simplified version of
             ``map_location`` in `torch.jit.save` used to dynamically remap
             storages to an alternative set of devices.
-        _extra_files (dictionary of filename to content): The extra
+        _extra_files (dictionary of file_path to content): The extra
             filenames given in the map would be loaded and their content
             would be stored in the provided map.
 
@@ -148,9 +148,9 @@ def load(f, map_location=None, _extra_files=None):
     """
     if isinstance(f, string_classes):
         if not os.path.exists(f):  # type: ignore[type-var]
-            raise ValueError("The provided filename {} does not exist".format(f))  # type: ignore[str-bytes-safe]
+            raise ValueError("The provided file_path {} does not exist".format(f))  # type: ignore[str-bytes-safe]
         if os.path.isdir(f):
-            raise ValueError("The provided filename {} is a directory".format(f))  # type: ignore[str-bytes-safe]
+            raise ValueError("The provided file_path {} is a directory".format(f))  # type: ignore[str-bytes-safe]
 
     map_location = validate_map_location(map_location)
     if _extra_files is None:

@@ -544,7 +544,7 @@ def _print_test_names():
 def chunk_list(lst, nchunks):
     return [lst[i::nchunks] for i in range(nchunks)]
 
-# sanitize filename e.g., distributed/pipeline/sync/skip/test_api.py -> distributed.pipeline.sync.skip.test_api
+# sanitize file_path e.g., distributed/pipeline/sync/skip/test_api.py -> distributed.pipeline.sync.skip.test_api
 def sanitize_test_filename(filename):
     # inspect.getfile returns absolute path in some CI jobs, converting it to relative path if needed
     if filename.startswith(CI_TEST_PREFIX):

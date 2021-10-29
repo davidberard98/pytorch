@@ -4,9 +4,9 @@ import unittest
 from tools.linter.translate_annotations import parse_annotation, parse_diff, translate
 
 flake8_regex \
-    = r'^(?P<filename>.*?):(?P<lineNumber>\d+):(?P<columnNumber>\d+): (?P<errorCode>\w+\d+) (?P<errorDesc>.*)'
+    = r'^(?P<file_path>.*?):(?P<lineNumber>\d+):(?P<columnNumber>\d+): (?P<errorCode>\w+\d+) (?P<errorDesc>.*)'
 clang_tidy_regex \
-    = r'^(?P<filename>.*?):(?P<lineNumber>\d+):(?P<columnNumber>\d+): (?P<errorDesc>.*?) \[(?P<errorCode>.*)\]'
+    = r'^(?P<file_path>.*?):(?P<lineNumber>\d+):(?P<columnNumber>\d+): (?P<errorDesc>.*?) \[(?P<errorCode>.*)\]'
 
 # in the below example patch, note that the filenames differ, so the
 # translation should reflect that as well as the line numbers
@@ -254,7 +254,7 @@ class TestTranslateAnnotations(unittest.TestCase):
         self.assertEqual(
             parse_annotation(regex, 'README.md:1:3: R100 make a better title'),
             {
-                'filename': 'README.md',
+                'file_path': 'README.md',
                 'lineNumber': 1,
                 'columnNumber': 3,
                 'errorCode': 'R100',
@@ -267,7 +267,7 @@ class TestTranslateAnnotations(unittest.TestCase):
         self.assertEqual(
             parse_annotation(regex, 'README.md:2:1: improve description [R200]'),
             {
-                'filename': 'README.md',
+                'file_path': 'README.md',
                 'lineNumber': 2,
                 'columnNumber': 1,
                 'errorCode': 'R200',

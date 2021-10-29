@@ -51,7 +51,7 @@ class LlvmCoverageParser:
         records: List[CoverageRecord] = []
         for export_unit in self._llvm_coverage["data"]:
             for file_info in export_unit["files"]:
-                filepath = file_info["filename"]
+                filepath = file_info["file_path"]
                 if self._skip_coverage(filepath):
                     continue
 

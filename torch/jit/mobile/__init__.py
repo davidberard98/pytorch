@@ -38,9 +38,9 @@ def _load_for_lite_interpreter(f, map_location=None):
     """
     if isinstance(f, str):
         if not os.path.exists(f):
-            raise ValueError("The provided filename {} does not exist".format(f))
+            raise ValueError("The provided file_path {} does not exist".format(f))
         if os.path.isdir(f):
-            raise ValueError("The provided filename {} is a directory".format(f))
+            raise ValueError("The provided file_path {} is a directory".format(f))
 
     map_location = validate_map_location(map_location)
 
@@ -97,9 +97,9 @@ def _get_model_bytecode_version(f_input) -> int:
     """
     if isinstance(f_input, str):
         if not os.path.exists(f_input):
-            raise ValueError(f"The provided filename {f_input} does not exist")
+            raise ValueError(f"The provided file_path {f_input} does not exist")
         if os.path.isdir(f_input):
-            raise ValueError(f"The provided filename {f_input} is a directory")
+            raise ValueError(f"The provided file_path {f_input} is a directory")
 
     if (isinstance(f_input, str) or isinstance(f_input, pathlib.Path)):
         return torch._C._get_model_bytecode_version(str(f_input))
@@ -127,9 +127,9 @@ def _get_mobile_model_contained_types(f_input) -> int:
     """
     if isinstance(f_input, str):
         if not os.path.exists(f_input):
-            raise ValueError(f"The provided filename {f_input} does not exist")
+            raise ValueError(f"The provided file_path {f_input} does not exist")
         if os.path.isdir(f_input):
-            raise ValueError(f"The provided filename {f_input} is a directory")
+            raise ValueError(f"The provided file_path {f_input} is a directory")
 
     if (isinstance(f_input, str) or isinstance(f_input, pathlib.Path)):
         return torch._C._get_mobile_model_contained_types(str(f_input))
@@ -148,9 +148,9 @@ def _backport_for_mobile(f_input, f_output, to_version):
     """
     if isinstance(f_input, str):
         if not os.path.exists(f_input):
-            raise ValueError(f"The provided filename {f_input} does not exist")
+            raise ValueError(f"The provided file_path {f_input} does not exist")
         if os.path.isdir(f_input):
-            raise ValueError(f"The provided filename {f_input} is a directory")
+            raise ValueError(f"The provided file_path {f_input} is a directory")
 
     if ((isinstance(f_input, str) or isinstance(f_input, pathlib.Path)) and (
             isinstance(f_output, str) or isinstance(f_output, pathlib.Path))):
@@ -167,9 +167,9 @@ def _backport_for_mobile_to_buffer(f_input, to_version):
     """
     if isinstance(f_input, str):
         if not os.path.exists(f_input):
-            raise ValueError(f"The provided filename {f_input} does not exist")
+            raise ValueError(f"The provided file_path {f_input} does not exist")
         if os.path.isdir(f_input):
-            raise ValueError(f"The provided filename {f_input} is a directory")
+            raise ValueError(f"The provided file_path {f_input} is a directory")
 
     if (isinstance(f_input, str) or isinstance(f_input, pathlib.Path)):
         return torch._C._backport_for_mobile_to_buffer(str(f_input), to_version)
@@ -207,9 +207,9 @@ def _get_model_ops_and_info(f_input):
     """
     if isinstance(f_input, str):
         if not os.path.exists(f_input):
-            raise ValueError(f"The provided filename {f_input} does not exist")
+            raise ValueError(f"The provided file_path {f_input} does not exist")
         if os.path.isdir(f_input):
-            raise ValueError(f"The provided filename {f_input} is a directory")
+            raise ValueError(f"The provided file_path {f_input} is a directory")
 
     if (isinstance(f_input, str) or isinstance(f_input, pathlib.Path)):
         return torch._C._get_model_ops_and_info(str(f_input))

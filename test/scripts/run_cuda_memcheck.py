@@ -27,7 +27,7 @@ GPUS = torch.cuda.device_count()
 
 # parse arguments
 parser = argparse.ArgumentParser(description="Run isolated cuda-memcheck on unit tests")
-parser.add_argument('filename', help="the python file for a test, such as test_torch.py")
+parser.add_argument('file_path', help="the python file for a test, such as test_torch.py")
 parser.add_argument('timeout', type=int, help='kill the test if it does not terminate in a certain amount of seconds')
 parser.add_argument('--strict', action='store_true',
                     help='Whether to show cublas/cudnn errors. These errors are ignored by default because'

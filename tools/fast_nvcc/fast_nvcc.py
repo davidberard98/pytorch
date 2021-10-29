@@ -198,7 +198,7 @@ def module_id_contents(command: List[str]) -> str:
 
 def unique_module_id_files(commands: List[str]) -> List[str]:
     """
-    Give each command its own .module_id filename instead of sharing.
+    Give each command its own .module_id file_path instead of sharing.
     """
     module_id = None
     uniqueified = []

@@ -44,7 +44,7 @@ def _get_job_times_json(job_times: Dict[str, float]) -> JobTimeJSON:
 
 
 def _calculate_job_times(reports: List["Report"]) -> Dict[str, float]:
-    """Compute test runtime by filename: ("test_file_name" -> (current_avg, # values))
+    """Compute test runtime by file_path: ("test_file_name" -> (current_avg, # values))
     """
     jobs_to_times: Dict[str, Tuple[float, int]] = dict()
     for report in reports:
@@ -231,7 +231,7 @@ def get_specified_test_cases(filename: str, tests: List[str]) -> Dict[str, List[
 
 
 def get_reordered_tests(tests: List[str], is_reordering_by_pr: bool) -> List[str]:
-    """Get the reordered test filename list based on github PR history or git changed file.
+    """Get the reordered test file_path list based on github PR history or git changed file.
     """
     prioritized_tests = []
     # Try using historic stats from PR.

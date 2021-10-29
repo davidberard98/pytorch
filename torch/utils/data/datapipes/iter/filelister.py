@@ -5,7 +5,7 @@ from typing import List, Union, Iterator
 class FileListerIterDataPipe(IterDataPipe[str]):
     r""" :class:`FileListerIterDataPipe`
 
-    Iterable DataPipe to load file pathname(s) (path + filename), yield pathname from given disk root dir.
+    Iterable DataPipe to load file pathname(s) (path + file_path), yield pathname from given disk root dir.
 
     Args:
         root: Root directory

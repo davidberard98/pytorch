@@ -118,7 +118,7 @@ def parse_annotation(regex: Pattern[str], line: str) -> Optional[Annotation]:
         except ValueError:
             return None
         return {
-            'filename': m.group('filename'),
+            'file_path': m.group('file_path'),
             'lineNumber': line_number,
             'columnNumber': column_number,
             'errorCode': m.group('errorCode'),
@@ -138,7 +138,7 @@ def translate_all(
     for line in lines:
         annotation = parse_annotation(regex, line)
         if annotation is not None:
-            ann_dict[annotation['filename']].append(annotation)
+            ann_dict[annotation['file_path']].append(annotation)
     ann_list = []
     for filename, annotations in ann_dict.items():
         raw_diff = subprocess.check_output(
@@ -146,14 +146,14 @@ def translate_all(
             encoding='utf-8',
         )
         diff = parse_diff(raw_diff) if raw_diff.strip() else None
-        # if there is a diff but it doesn't list an old filename, that
+        # if there is a diff but it doesn't list an old file_path, that
         # means the file is absent in the commit we're targeting, so we
         # skip it
         if not (diff and not diff['old_filename']):
             for annotation in annotations:
                 line_number: Optional[int] = annotation['lineNumber']
                 if diff:
-                    annotation['filename'] = cast(str, diff['old_filename'])
+                    annotation['file_path'] = cast(str, diff['old_filename'])
                     line_number = translate(diff, cast(int, line_number))
                 if line_number:
                     annotation['lineNumber'] = line_number

@@ -7,7 +7,7 @@ class LineReaderIterDataPipe(IterDataPipe[Tuple[str, str]]):
     r""" :class:`LineReaderIterDataPipe`
 
     Iterable DataPipe to load file name and stream as source IterDataPipe
-    and yield filename and line(s).
+    and yield file_path and line(s).
 
     Args:
         datapipe: Iterable DataPipe providing file name and string file stream

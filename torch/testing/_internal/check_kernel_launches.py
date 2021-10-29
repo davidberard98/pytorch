@@ -71,7 +71,7 @@ def check_code_for_cuda_kernel_launches(code, filename=None):
     """Checks code for CUDA kernel launches without cuda error checks.
 
     Args:
-        filename - Filename of file containing the code. Used only for display
+        file_path - Filename of file containing the code. Used only for display
                    purposes, so you can put anything here.
         code     - The code to check
 
@@ -102,7 +102,7 @@ def check_file(filename):
     """Checks a file for CUDA kernel launches without cuda error checks
 
     Args:
-        filename - File to check
+        file_path - File to check
 
     Returns:
         The number of unsafe kernel launches in the file

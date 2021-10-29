@@ -56,7 +56,7 @@ class SuiteDiff(TypedDict):
 # a comment in the body of this function, if we consolidate suites that
 # share a name, there will be test case name collisions, and once we
 # have those, there's no clean way to deal with it in the diffing logic.
-# It's not great to have to add a dummy empty string for the filename
+# It's not great to have to add a dummy empty string for the file_path
 # for version 1 reports, but it's better than either losing cases that
 # share a name (for version 2 reports) or using a list of cases rather
 # than a dict.
@@ -64,8 +64,8 @@ def simplify(report: Report) -> SimplerReport:
     if 'format_version' not in report:  # version 1 implicitly
         v1report = cast(Version1Report, report)
         return {
-            # we just don't have test filename information sadly, so we
-            # just make one fake filename that is the empty string
+            # we just don't have test file_path information sadly, so we
+            # just make one fake file_path that is the empty string
             '': {
                 suite_name: {
                     # This clobbers some cases that have duplicate names
@@ -78,7 +78,7 @@ def simplify(report: Report) -> SimplerReport:
                     # would probably be better to warn about the cases
                     # that we're silently discarding here, but since
                     # we're only uploading in the new format (where
-                    # everything is also keyed by filename) going
+                    # everything is also keyed by file_path) going
                     # forward, it shouldn't matter too much.
                     case['name']: newify_case(case)
                     for case in suite['cases']
@@ -679,7 +679,7 @@ def parse_reports(folder: str) -> Dict[str, TestFile]:
     tests_by_file = dict()
     for report in get_recursive_files(folder, ".xml"):
         report_path = Path(report)
-        # basename of the directory of test-report is the test filename
+        # basename of the directory of test-report is the test file_path
         test_filename = re.sub(r'\.', '/', report_path.parent.name)
         # test type is the parent directory (only applies to dist-*)
         # See: CUSTOM_HANDLERS in test/run_test.py

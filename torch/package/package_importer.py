@@ -57,7 +57,7 @@ class PackageImporter(Importer):
 
         Args:
             file_or_buffer: a file-like object (has to implement :meth:`read`, :meth:`readline`, :meth:`tell`, and :meth:`seek`),
-                a string, or an ``os.PathLike`` object containing a filename.
+                a string, or an ``os.PathLike`` object containing a file_path.
             module_allowed (Callable[[str], bool], optional): A method to determine if a externally provided module
                 should be allowed. Can be used to ensure packages loaded do not depend on modules that the server
                 does not support. Defaults to allowing anything.

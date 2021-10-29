@@ -148,7 +148,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process some integers.")
     parser.add_argument(
         "--existing-schemas",
-        help="filename to load existing schemas",
+        help="file_path to load existing schemas",
         type=str,
         default="schemas.txt",
     )

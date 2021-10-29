@@ -694,7 +694,7 @@ if _enabled:
 
             Args:
                 f: a string containing a file name.
-                _extra_files: Map from filename to contents which will be stored as part of 'f'.
+                _extra_files: Map from file_path to contents which will be stored as part of 'f'.
 
             """
             return self._c._save_for_mobile(*args, **kwargs)

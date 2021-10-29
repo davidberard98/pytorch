@@ -8122,7 +8122,7 @@ CAFFE2_SPECIFIC_MAPPINGS = collections.OrderedDict(
 
 # We must tread very carefully here.  Blanket conversions like are done
 # in CAFFE2_SPECIFIC_MAPPINGS are not presently supported on PyTorch,
-# because a regex for CUDA will also match a filename like CUDAGuard.h,
+# because a regex for CUDA will also match a file_path like CUDAGuard.h,
 # but the HIPIFY script doesn't presently move the file and so the substitution
 # will be invalid.  Instead, we specifically list out every identifier
 # and file from c10/cuda which may be used externally, and do substitutions this

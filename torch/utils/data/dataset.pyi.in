@@ -1,5 +1,7 @@
 # This base template ("dataset.pyi.in") is generated from mypy stubgen with minimal editing for code injection
-# The output file will be "dataset.pyi"
+# The output file will be "dataset.pyi".
+# Note that, for mypy, .pyi file takes precedent over .py file, such that we must define the interface for other
+# classes/objects here, even though we are not injecting extra code into them at the moment.
 
 from ... import Generator as Generator, Tensor as Tensor
 from torch import default_generator as default_generator, randperm as randperm

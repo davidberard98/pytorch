@@ -388,7 +388,7 @@ def build_ignore_context_manager(ctx, stmt):
         return inputs, outputs
 
     def create_unique_name_ext(ctx, stmt):
-        # extension will be based on the full path filename plus
+        # extension will be based on the full path file_path plus
         # the line number of original context manager
         return ctx.filename.replace(".", "_").replace("/", "_") + "_" + str(stmt.lineno)
 

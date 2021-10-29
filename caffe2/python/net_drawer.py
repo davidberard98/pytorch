@@ -353,7 +353,7 @@ def main():
     parser.add_argument(
         "--output_prefix",
         type=str, default="",
-        help="The prefix to be added to the output filename."
+        help="The prefix to be added to the output file_path."
     )
     parser.add_argument(
         "--minimal", action="store_true",

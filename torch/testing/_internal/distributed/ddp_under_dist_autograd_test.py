@@ -54,7 +54,7 @@ def init_logger():
     logger.setLevel(level)
     console = logging.StreamHandler()
     formatter = logging.Formatter(
-        "%(asctime)s %(filename)s:%(lineno)s %(levelname)s p:%(processName)s t:%(threadName)s: %(message)s"
+        "%(asctime)s %(file_path)s:%(lineno)s %(levelname)s p:%(processName)s t:%(threadName)s: %(message)s"
     )
     console.setFormatter(formatter)
     console.setLevel(level)

@@ -20,7 +20,7 @@ def add_docstr_all(method, docstr):
 
 add_docstr_all('from_file',
                """
-from_file(filename, shared=False, size=0) -> Storage
+from_file(file_path, shared=False, size=0) -> Storage
 
 If `shared` is `True`, then memory is shared between all processes.
 All changes are written to the file. If `shared` is `False`, then the changes on
@@ -32,7 +32,7 @@ then the file must contain at least `size * sizeof(Type)` bytes
 created if needed.
 
 Args:
-    filename (str): file name to map
+    file_path (str): file name to map
     shared (bool): whether to share memory
     size (int): number of elements in the storage
 """)

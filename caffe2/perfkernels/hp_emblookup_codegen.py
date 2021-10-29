@@ -386,7 +386,7 @@ def generic(IndexType, InType, OutType, use_weights, isa, fused, use_offsets):
 
 # start main code
 parser = argparse.ArgumentParser()
-parser.add_argument("-f", "--filename", help="file name")
+parser.add_argument("-f", "--file_path", help="file name")
 parser.add_argument("--fused", action="store_true")
 parser.add_argument("--use-offsets", action="store_true")
 opts = parser.parse_args()

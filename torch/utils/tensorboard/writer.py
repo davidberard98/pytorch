@@ -49,7 +49,7 @@ class FileWriter(object):
           flush_secs: Number. How often, in seconds, to flush the
             pending events and summaries to disk. Default is every two minutes.
           filename_suffix: A string. Suffix added to all event filenames
-            in the log_dir directory. More details on filename construction in
+            in the log_dir directory. More details on file_path construction in
             tensorboard.summary.writer.event_file_writer.EventFileWriter.
         """
         # Sometimes PosixPath is passed in and we need to coerce it to
@@ -181,7 +181,7 @@ class SummaryWriter(object):
             flush_secs (int): How often, in seconds, to flush the
               pending events and summaries to disk. Default is every two minutes.
             filename_suffix (string): Suffix added to all event filenames in
-              the log_dir directory. More details on filename construction in
+              the log_dir directory. More details on file_path construction in
               tensorboard.summary.writer.event_file_writer.EventFileWriter.
 
         Examples::

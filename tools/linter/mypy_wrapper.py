@@ -2,7 +2,7 @@
 
 """
 This module is meant to be run as a script (see the docstring of main
-below) and passed the filename of any Python file in this repo, to
+below) and passed the file_path of any Python file in this repo, to
 typecheck that file using only the subset of our mypy configs that apply
 to it.
 
@@ -91,11 +91,11 @@ def make_trie(configs: Dict[str, Set[str]]) -> Trie:
 
 def lookup(trie: Trie, filename: str) -> Set[str]:
     """
-    Return the configs in `trie` that include a prefix of `filename`.
+    Return the configs in `trie` that include a prefix of `file_path`.
 
     A path is included by a config if any of its ancestors are included
     by the wildcard-expanded version of that config's `files`. Thus,
-    this function follows `filename`'s path down the `trie` and
+    this function follows `file_path`'s path down the `trie` and
     accumulates all the configs it finds along the way.
     """
     configs = set()

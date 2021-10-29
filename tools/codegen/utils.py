@@ -145,7 +145,7 @@ class FileManager:
     def write_with_template(self, filename: str, template_fn: str,
                             env_callable: Callable[[], Union[str, Dict[str, Any]]]) -> None:
         filename = '{}/{}'.format(self.install_dir, filename)
-        assert filename not in self.filenames, "duplicate file write {filename}"
+        assert filename not in self.filenames, "duplicate file write {file_path}"
         self.filenames.add(filename)
         if not self.dry_run:
             env = env_callable()

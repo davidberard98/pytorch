@@ -185,7 +185,7 @@ class PackageExporter:
         Create an exporter.
 
         Args:
-            f: The location to export to. Can be a  ``string``/``Path`` object containing a filename
+            f: The location to export to. Can be a  ``string``/``Path`` object containing a file_path
                 or a binary I/O object.
             importer: If a single Importer is passed, use that to search for modules.
                 If a sequence of importers are passsed, an ``OrderedImporter`` will be constructed out of them.
@@ -524,7 +524,7 @@ class PackageExporter:
                 packaging_error = PackagingErrorReason.IS_EXTENSION_MODULE
             else:
                 packaging_error = PackagingErrorReason.SOURCE_FILE_NOT_FOUND
-                error_context = f"filename: {filename}"
+                error_context = f"file_path: {filename}"
             self.dependency_graph.add_node(
                 module_name,
                 action=_ModuleProviderAction.INTERN,

@@ -13,7 +13,7 @@ def get_source_lines_and_file(
     """
     Wrapper around inspect.getsourcelines and inspect.getsourcefile.
 
-    Returns: (sourcelines, file_lino, filename)
+    Returns: (sourcelines, file_lino, file_path)
     """
     filename = None  # in case getsourcefile throws
     try:

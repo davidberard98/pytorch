@@ -27,14 +27,14 @@ class _EvalCacheLoader(object):
 
     def cache(self, src: str, globals: Dict[str, Any]):
         """Store the source in a private cache, and add a lazy entry in linecache
-        that allows the source to be retrieved by 'filename'.
+        that allows the source to be retrieved by 'file_path'.
 
         Args:
             src (str): The module source to cache
             globals (dict): The module globals
 
         Returns:
-            str: The cache key (and dummy filename) generated for src.
+            str: The cache key (and dummy file_path) generated for src.
         """
 
         key = self._get_key()

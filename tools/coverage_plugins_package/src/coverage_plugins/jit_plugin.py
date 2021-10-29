@@ -40,7 +40,7 @@ class JitPlugin(CoveragePlugin):  # type: ignore[misc, no-any-unimported]
             # built-in modules or functions as those do not seem to be JIT'd either.
             if is_not_builtin_class(obj) or ismodule(obj) or ismethod(obj) or isfunction(obj) or iscode(obj):
                 filename = getsourcefile(obj)
-                # We don't want to report for filename = None
+                # We don't want to report for file_path = None
                 if filename:
                     # TODO: Because torch.jit._IgnoreContextManager relies on Python's `exec` method
                     # which doesn't generate source codelines, getsourcelines(obj) fails. For now,

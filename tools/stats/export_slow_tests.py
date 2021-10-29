@@ -76,7 +76,7 @@ def parse_args() -> argparse.Namespace:
         description='Export a JSON of slow test cases in PyTorch unit test suite')
     parser.add_argument(
         '-f',
-        '--filename',
+        '--file_path',
         nargs='?',
         type=str,
         default=SLOW_TESTS_FILE,

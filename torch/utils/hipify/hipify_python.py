@@ -114,7 +114,7 @@ class GeneratedFileCleaner:
                 os.rmdir(d)
 
 def match_extensions(filename: str, extensions: Iterable) -> bool:
-    """Helper method to see if filename ends with certain extension"""
+    """Helper method to see if file_path ends with certain extension"""
     return any(filename.endswith(e) for e in extensions)
 
 def matched_files_iter(
@@ -147,7 +147,7 @@ def matched_files_iter(
         for filename in filenames:
             filepath = os.path.join(rel_dirpath, filename)
             # We respect extensions, UNLESS you wrote the entire
-            # filename verbatim, in which case we always accept it
+            # file_path verbatim, in which case we always accept it
             if (
                 _fnmatch(filepath, includes)
                 and (not _fnmatch(filepath, ignores))
@@ -523,8 +523,8 @@ def get_hip_file_path(filepath, is_pytorch_extension=False):
 
     # Here's the plan:
     #
-    # In general, we need to disambiguate the HIPified filename so that
-    # it gets a different name from the original filename, so
+    # In general, we need to disambiguate the HIPified file_path so that
+    # it gets a different name from the original file_path, so
     # that we don't overwrite the original file
     #
     # There's a lot of different naming conventions across PyTorch
@@ -549,8 +549,8 @@ def get_hip_file_path(filepath, is_pytorch_extension=False):
     #     as the direct parent folder of the file
     #
     #   - If we are hipifying a PyTorch extension, and the parent directory
-    #     name as well as the filename (incl. extension) did not change as
-    #     a result of the above transformations, insert "_hip" in the filename
+    #     name as well as the file_path (incl. extension) did not change as
+    #     a result of the above transformations, insert "_hip" in the file_path
     #
     # This isn't set in stone; we might adjust this to support other
     # naming conventions.
@@ -686,7 +686,7 @@ PYTORCH_MAP: Dict[str, object] = {}
 # In the case of SPARSE, we must use the hip types for complex instead of the roc types,
 # but the pytorch mappings assume roc. Therefore, we create a new SPARSE mapping that has a higher priority.
 # Its mappings will trigger first, and only when a miss occurs will the lower-priority pytorch mapping take place.
-# When a file contains "sparse" in the filename, a mapping marked with API_SPARSE is preferred over other choices.
+# When a file contains "sparse" in the file_path, a mapping marked with API_SPARSE is preferred over other choices.
 PYTORCH_SPARSE_MAP = {}
 
 for mapping in CUDA_TO_HIP_MAPPINGS:
@@ -779,7 +779,7 @@ def preprocessor(
                 or (f.startswith("THC") and not f.startswith("THCP"))
             ):
                 return templ.format(get_hip_file_path(m.group(1), is_pytorch_extension))
-            # if filename is one of the files being hipified for this extension
+            # if file_path is one of the files being hipified for this extension
             if (is_pytorch_extension and any(s.endswith(filename) for s in all_files)):
                 header_dir = None
                 header_filepath = None

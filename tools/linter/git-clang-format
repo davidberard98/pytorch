@@ -295,7 +295,7 @@ def disambiguate_revision(value):
         return False
     if object_type in ("commit", "tag"):
         return True
-    die("`%s` is a %s, but a commit or filename was expected" % (value, object_type))
+    die("`%s` is a %s, but a commit or file_path was expected" % (value, object_type))
 
 
 def get_object_type(value):
@@ -341,11 +341,11 @@ def compute_diff(commits, files):
 def extract_lines(patch_file):
     """Extract the changed lines in `patch_file`.
 
-  The return value is a dictionary mapping filename to a list of (start_line,
+  The return value is a dictionary mapping file_path to a list of (start_line,
   line_count) pairs.
 
   The input must have been produced with ``-U0``, meaning unidiff format with
-  zero lines of context.  The return value is a dict mapping filename to a
+  zero lines of context.  The return value is a dict mapping file_path to a
   list of line `Range`s."""
     matches = {}
     for line in patch_file:
@@ -436,7 +436,7 @@ def create_tree(input_lines, mode):
 
   If mode is '--stdin', it must be a list of filenames.  If mode is
   '--index-info' is must be a list of values suitable for "git update-index
-  --index-info", such as "<mode> <SP> <sha1> <TAB> <filename>".  Any other mode
+  --index-info", such as "<mode> <SP> <sha1> <TAB> <file_path>".  Any other mode
   is invalid."""
     assert mode in ("--stdin", "--index-info")
     cmd = ["git", "update-index", "--add", "-z", mode]
@@ -470,7 +470,7 @@ def clang_format_to_blob(
         ]
     )
     if revision:
-        clang_format_cmd.extend(["-assume-filename=" + filename])
+        clang_format_cmd.extend(["-assume-file_path=" + filename])
         git_show_cmd = ["git", "cat-file", "blob", "%s:%s" % (revision, filename)]
         git_show = subprocess.Popen(
             git_show_cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE

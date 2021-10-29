@@ -16,8 +16,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument(
         '-f',
-        '--filename',
-        help='filename to dump the schemas',
+        '--file_path',
+        help='file_path to dump the schemas',
         type=str,
         default='schemas.txt')
     args = parser.parse_args()
