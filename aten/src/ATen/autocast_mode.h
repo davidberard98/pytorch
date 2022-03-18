@@ -17,6 +17,19 @@ TORCH_API void set_autocast_cpu_dtype(at::ScalarType dtype);
 TORCH_API bool is_autocast_cache_enabled();
 TORCH_API void set_autocast_cache_enabled(bool enabled);
 
+struct TORCH_API AutocastContext {
+  bool gpu_enabled = false;
+  bool cpu_enabled = false;
+  c10::ScalarType gpu_scalar_type = c10::ScalarType::Undefined;
+  c10::ScalarType cpu_scalar_type = c10::ScalarType::Undefined;
+
+  operator bool() const {
+    return gpu_enabled || cpu_enabled;
+  }
+};
+
+TORCH_API AutocastContext get_autocast_context();
+
 
 namespace {
   bool is_autocast_eligible(const Tensor& tensor, DeviceType device_type) {

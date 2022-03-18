@@ -125,7 +125,7 @@ void preoptimizeGraph(std::shared_ptr<Graph>& graph) {
   //     of the any optimizations
   //  2. AMP transformations would benefit from followup passes's cleanup
   //
-  Autocast(graph);
+  Autocast(graph, at::autocast::get_autocast_context());
 #endif
 
   ConstantPooling(graph);

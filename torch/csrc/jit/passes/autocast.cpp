@@ -21,21 +21,10 @@ namespace {
 
 bool autocast_enabled = true;
 
-struct AutocastContext {
-  bool gpu_enabled = false;
-  bool cpu_enabled = false;
-  c10::ScalarType gpu_scalar_type = c10::ScalarType::Undefined;
-  c10::ScalarType cpu_scalar_type = c10::ScalarType::Undefined;
-
-  operator bool() const {
-    return gpu_enabled || cpu_enabled;
-  }
-};
-
 struct AutocastScope {
   Value* instance = nullptr;
-  AutocastContext context;
-  void stack(const AutocastContext& parent_context) {}
+  at::autocast::AutocastContext context;
+  void stack(const at::autocast::AutocastContext& parent_context) {}
 };
 
 bool isAutocastNode(Value* value) {
@@ -63,7 +52,7 @@ bool isAutocastNode(Value* value) {
 //
 c10::optional<AutocastScope> parseAutocast(
     Value* value,
-    const AutocastContext& context) {
+    const at::autocast::AutocastContext& context) {
   if (!isAutocastNode(value)) {
     // Not an autocast...
     return c10::nullopt;
@@ -140,7 +129,7 @@ c10::optional<AutocastScope> parseAutocast(
 void castTensorInputs(
     Node* node,
     Symbol cast_op,
-    const AutocastContext& context) {
+    const at::autocast::AutocastContext& context) {
   if (!context) {
     return;
   }
@@ -196,7 +185,7 @@ bool hasExplicitDtypeArgument(Node* node) {
   return false;
 }
 
-void castInputsToWidestType(Node* node, const AutocastContext& context) {
+void castInputsToWidestType(Node* node, const at::autocast::AutocastContext& context) {
   if (!context) {
     return;
   }
@@ -232,7 +221,7 @@ void castInputsToWidestType(Node* node, const AutocastContext& context) {
 // expects dgrad to be the same scalar type to throw mismatch error.
 //
 // TODO: Use the list from AMP eager directly
-void handleBlock(Block* block, AutocastContext initial_state) {
+void handleBlock(Block* block, at::autocast::AutocastContext initial_state) {
   std::stack<AutocastScope> autocast_stack;
 
   c10::optional<bool> incompatible_amp = c10::nullopt;
@@ -469,15 +458,10 @@ bool autocastEnabled() {
   return autocast_enabled;
 }
 
-void Autocast(const std::shared_ptr<Graph>& graph) {
+void Autocast(const std::shared_ptr<Graph>& graph, at::autocast::AutocastContext init_context) {
   GRAPH_DUMP("\nBefore Autocast: ", graph);
   if (autocastEnabled()) {
-    AutocastContext init = {
-        at::autocast::is_enabled(),
-        at::autocast::is_cpu_enabled(),
-        at::autocast::get_autocast_gpu_dtype(),
-        at::autocast::get_autocast_cpu_dtype()};
-    handleBlock(graph->block(), init);
+    handleBlock(graph->block(), init_context);
   }
   GRAPH_DUMP("\nAfter Autocast: ", graph);
 }

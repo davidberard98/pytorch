@@ -104,6 +104,15 @@ void set_autocast_cache_enabled(bool enabled) {
   cache_enabled = enabled;
 }
 
+AutocastContext get_autocast_context() {
+  return {
+    is_enabled(),
+    is_cpu_enabled(),
+    get_autocast_gpu_dtype(),
+    get_autocast_cpu_dtype(),
+  };
+}
+
 // Overload to catch Tensor args
 // TODO (possible optimization):
 // Move cast_cache to an inline function in a header with cached_casts declared as
