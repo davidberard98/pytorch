@@ -13,6 +13,8 @@ C10_DECLARE_bool(torch_jit_enable_new_executor);
 
 namespace torch {
 namespace jit {
+TORCH_API bool makeFirstBackwardInputUndefined(bool setting);
+
 struct GraphExecutorState;
 struct Code;
 

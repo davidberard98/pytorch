@@ -201,6 +201,9 @@ void initJITBindings(PyObject* module) {
           PropagateShapesAndBuildLargeShapeComputeGraph)
       .def("_jit_pass_integer_value_refinement", RefineIntegerValues)
       .def(
+          "_jit_make_first_backward_input_undefined",
+          &makeFirstBackwardInputUndefined)
+      .def(
           "_jit_set_symbolic_shapes_test_mode",
           &setSymbolicShapeAnalysisTestMode)
       .def(

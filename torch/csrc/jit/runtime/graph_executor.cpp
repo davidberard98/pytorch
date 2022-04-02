@@ -74,7 +74,13 @@ namespace {
 c10::AliasAnalysisKind aliasAnalysisInternalSpecialCase() {
   return AliasAnalysisKind::INTERNAL_SPECIAL_CASE;
 }
+std::atomic<bool> make_first_backward_input_undefined{false};
 } // namespace
+
+
+bool makeFirstBackwardInputUndefined(bool setting) {
+  return make_first_backward_input_undefined.exchange(setting);
+}
 
 // for debugging it is helpful to be able to force autodiff subgraphs
 // to be created, to check their correctness, even when the
@@ -260,6 +266,9 @@ struct DifferentiableGraphBackward : public autograd::Node {
 
     input_instructions_.unpack(std::move(inputs), stack);
     captures_.unpack(stack, shared_from_this());
+    if (make_first_backward_input_undefined) {
+      stack[0] = at::Tensor{};
+    }
     GRAPH_DEBUG("Running DifferentiableGraphBackward for ", &executor);
     executor.run(stack);
     unpackReturnTuple(stack);
