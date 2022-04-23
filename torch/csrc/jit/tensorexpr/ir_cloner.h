@@ -2,6 +2,7 @@
 #include <c10/core/ScalarType.h>
 #include <torch/csrc/Export.h>
 #include <vector>
+#include <unordered_map>
 
 #include <torch/csrc/jit/tensorexpr/ir_mutator.h>
 
@@ -58,6 +59,18 @@ class TORCH_API IRCloner : public IRMutator {
   StmtPtr mutate(FreePtr v) override;
   StmtPtr mutate(LetPtr v) override;
   StmtPtr mutate(CondPtr v) override;
+ private:
+  std::unordered_map<void*, StmtPtr> stmt_cache_;
+  std::unordered_map<void*, ExprPtr> expr_cache_;
+
+  template <typename T>
+  StmtPtr get_stmt_from_cache(const std::shared_ptr<T>& ptr);
+  template <typename T>
+  ExprPtr get_expr_from_cache(const std::shared_ptr<T>& ptr);
+  template <typename T>
+  StmtPtr cache_stmt(const std::shared_ptr<T>& ptr, StmtPtr copy);
+  template <typename T>
+  ExprPtr cache_expr(const std::shared_ptr<T>& ptr, ExprPtr copy);
 };
 
 } // namespace tensorexpr
