@@ -368,6 +368,7 @@ core_sources_full_mobile_no_backend_interface = [
     "torch/csrc/jit/tensorexpr/ir.cpp",
     "torch/csrc/jit/tensorexpr/ir_cloner.cpp",
     "torch/csrc/jit/tensorexpr/ir_mutator.cpp",
+    "torch/csrc/jit/tensorexpr/ir_mutator_caching.cpp",
     "torch/csrc/jit/tensorexpr/ir_printer.cpp",
     "torch/csrc/jit/tensorexpr/ir_simplifier.cpp",
     "torch/csrc/jit/tensorexpr/ir_verifier.cpp",
