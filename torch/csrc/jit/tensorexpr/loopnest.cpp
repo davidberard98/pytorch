@@ -20,6 +20,7 @@
 #include <torch/csrc/jit/tensorexpr/ir.h>
 #include <torch/csrc/jit/tensorexpr/ir_cloner.h>
 #include <torch/csrc/jit/tensorexpr/ir_mutator.h>
+#include <torch/csrc/jit/tensorexpr/ir_mutator_caching.h>
 #include <torch/csrc/jit/tensorexpr/ir_printer.h>
 #include <torch/csrc/jit/tensorexpr/ir_simplifier.h>
 #include <torch/csrc/jit/tensorexpr/ir_verifier.h>
@@ -98,10 +99,6 @@ const std::unordered_set<BufPtr> LoopNest::getInputBufs() const {
 
 class IndexFlattener : public IRMutator {
  public:
-  StmtPtr flatten(StmtPtr s) {
-    return s->accept_mutator(this);
-  }
-
   ExprPtr mutate(LoadPtr v) override {
     if (v->indices().size() == 1) {
       return v;
@@ -228,14 +225,14 @@ class VarNameSanitizer : public IRMutator {
 };
 
 StmtPtr LoopNest::sanitizeNames(StmtPtr s) {
-  VarNameSanitizer r;
+  IRMutatorCaching r(VarNameSanitizer());
   s->accept_mutator(&r);
   return s;
 }
 
 class Vectorizer : public IRMutator {
  public:
-  StmtPtr vectorize(ForPtr v) {
+  static StmtPtr vectorize(IRMutator vectorizer, ForPtr v) {
     StmtPtr body = v->body();
     VarPtr var = v->var();
     ExprPtr start = v->start();
@@ -259,7 +256,7 @@ class Vectorizer : public IRMutator {
     start_ = immLike(start, *start_imm);
     lanes_ = *stop_imm;
 
-    StmtPtr new_body = body->accept_mutator(this);
+    StmtPtr new_body = body->accept_mutator(vectorizer);
     if (new_body == body) {
       // Vectorization failed!
       success_ = false;
@@ -601,13 +598,14 @@ bool LoopNest::vectorize(ForPtr f) {
     }
   }
 
-  Vectorizer v;
+  // TODO caching
+  IRMutatorCaching v(Vectorizer());
   StmtPtr new_f = nullptr;
   new_f = Stmt::clone(f);
   normalize(to<For>(new_f));
   new_f = FlattenIndexes(new_f);
-  new_f = v.vectorize(to<For>(new_f));
-  if (!v.success()) {
+  new_f = Vectorizer::vectorize(v, to<For>(new_f));
+  if (!v.impl.success()) {
     // We clone f before vectorizing. So, any partial vectorization will
     // have modified the clone. In case of an exception, we can continue
     // using f.
@@ -919,9 +917,9 @@ StmtPtr computeInlineImpl(
   }
 
   GRAPH_DEBUG("ComputeInline: Def: ", std::to_string(relevant_store));
-  FunctionInliner inliner(relevant_store, output_bufs);
-  auto result = stmt->accept_mutator(&inliner);
-  if (inliner.success()) {
+  IRMutatorCaching inliner(FunctionInliner(relevant_store, output_bufs));
+  auto result = stmt->accept_mutator(&caching_inliner);
+  if (inliner.impl.success()) {
     return result;
   }
   return nullptr;
@@ -1204,7 +1202,7 @@ void LoopNest::eliminateDeadStores() {
     }
   }
 
-  StmtDeleter deleter(deadStores);
+  IRMutatorCaching deleter(StmtDeleter(deadStores));
   root_stmt_ = root_stmt_->accept_mutator(&deleter);
 }
 
@@ -2745,8 +2743,8 @@ StmtPtr LoopNest::simplify() {
 }
 
 StmtPtr FlattenIndexes(StmtPtr s) {
-  IndexFlattener idx_flattener;
-  return idx_flattener.flatten(s);
+  IRMutatorCaching idx_flattener(IndexFlattener());
+  return s->accept_mutator(idx_flattener);
 }
 
 // Auxiliary class for rewriting we're doing in `compute_at`. See
@@ -3223,7 +3221,7 @@ void LoopNest::computeAt(StmtPtr s, ForPtr f) {
   f->body()->prepend_stmt(bd);
 
   // Rewrite accesses to producer in consumer with accesses to temp
-  LoopComputeAtRewriter lr(st->buf(), temp_buf, offsets);
+  IRMutatorCaching lr(LoopComputeAtRewriter(st->buf(), temp_buf, offsets));
   StmtPtr new_f = f->accept_mutator(&lr);
   if (f != new_f) {
     BlockPtr bb = to<Block>(f->get_parent());
@@ -3390,8 +3388,8 @@ bool LoopNest::rfactor(
   // Rewrite the original reduction store to use the temporary rfac buffer:
   //   1) X[*indexes] --> T[*indexes + {reduction_var}]
   //   2) reduce_axis -= {reduction_var}
-  RfactorStoreRewriter rfac_rewriter(
-      orig_buf, orig_buf_indices, rfac_buf, reduction_var);
+  IRMutatorCaching rfac_rewriter(RfactorStoreRewriter(
+      orig_buf, orig_buf_indices, rfac_buf, reduction_var));
   to<Block>(st->get_parent())
       ->replace_stmt(st, st->accept_mutator(&rfac_rewriter));
 

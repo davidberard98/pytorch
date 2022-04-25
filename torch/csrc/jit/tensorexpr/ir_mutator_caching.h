@@ -12,6 +12,7 @@ namespace tensorexpr {
 
 class TORCH_API IRMutatorCaching : public IRMutator {
  public:
+  IRMutator impl;
   explicit IRMutatorCaching(IRMutator impl);
   ~IRMutatorCaching() override = default;
   ExprPtr mutate(AddPtr v) override;
@@ -61,7 +62,6 @@ class TORCH_API IRMutatorCaching : public IRMutator {
   StmtPtr mutate(LetPtr v) override;
   StmtPtr mutate(CondPtr v) override;
  private:
-  IRMutator impl_;
   std::unordered_map<void*, ExprPtr> expr_cache_;
   std::unordered_map<void*, StmtPtr> stmt_cache_;
 

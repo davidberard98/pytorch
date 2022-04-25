@@ -4,7 +4,7 @@ namespace torch {
 namespace jit {
 namespace tensorexpr {
 
-IRMutatorCaching::IRMutatorCaching(IRMutator impl) : impl_(std::move(impl)) {}
+IRMutatorCaching::IRMutatorCaching(IRMutator impl) : impl(std::move(impl)) {}
 
 template<typename T>
 ExprPtr IRMutatorCaching::get_cached_expr(const std::shared_ptr<T>& ptr) {
@@ -41,7 +41,7 @@ ExprPtr IRMutatorCaching::mutate(PtrType v) { \
   if (auto cached = get_cached_expr(v)) {     \
     return cached;                            \
   }                                           \
-  return set_cached_expr(v, impl_.mutate(v)); \
+  return set_cached_expr(v, impl.mutate(v)); \
 }
 
 
@@ -50,7 +50,7 @@ StmtPtr IRMutatorCaching::mutate(PtrType v) { \
   if (auto cached = get_cached_stmt(v)) {     \
     return cached;                            \
   }                                           \
-  return set_cached_stmt(v, impl_.mutate(v)); \
+  return set_cached_stmt(v, impl.mutate(v)); \
 }
 
 DEFINE_EXPR_MUTATOR_CACHING(AddPtr)
