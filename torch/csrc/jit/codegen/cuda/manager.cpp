@@ -211,6 +211,10 @@ void compileCudaFusionGroup(Node* fusion_node) {
   auto graph = fusion_node->g(attr::Subgraph)->copy();
 
   auto compile_fusion = [&]() {
+    int32_t fusion_cache_id =
+        CudaFusionManager::getManager().registerOrGetCacheId(graph);
+    fusion_node->i_(attr::cache_id, fusion_cache_id);
+
     // type propagation is needed, as the protocol only requires scalar type on
     // input tensors.
     // Note that even for Profiling Executor, scalar type could still be
@@ -218,10 +222,6 @@ void compileCudaFusionGroup(Node* fusion_node) {
     // node only insert meta information after itself).
     PropagateShapesOnGraph(graph);
     TypePropagate(graph);
-
-    int32_t fusion_cache_id =
-        CudaFusionManager::getManager().registerOrGetCacheId(graph);
-    fusion_node->i_(attr::cache_id, fusion_cache_id);
   };
 
   if (useFallback()) {
@@ -229,10 +229,15 @@ void compileCudaFusionGroup(Node* fusion_node) {
       compile_fusion();
     } catch (...) {
       TORCH_WARN(
-          "FALLBACK path has been taken. This is an indication that codegen"
-          "Failed for some reason. To debug try disable codegen fallback path"
-          "via setting the env variable"
+          "FALLBACK path has been taken DURING COMPILATION. This is an "
+          "indication that codegen failed for some reason. To debug try "
+          "disable codegen fallback path via setting the env variable "
           "`export PYTORCH_NVFUSER_DISABLE_FALLBACK=1`");
+      if (!fusion_node->hasAttribute(attr::cache_id)) {
+        int32_t fusion_cache_id =
+            CudaFusionManager::getManager().registerOrGetCacheId(graph);
+        fusion_node->i_(attr::cache_id, fusion_cache_id);
+      }
       CudaFusionManager::getManager().unregisterCacheId(graph);
     }
   } else {
