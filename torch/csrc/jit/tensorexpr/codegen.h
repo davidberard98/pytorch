@@ -2,6 +2,7 @@
 
 #include <ATen/ATen.h>
 #include <torch/csrc/jit/tensorexpr/ir.h>
+#include <torch/csrc/jit/tensorexpr/ir_mutator_caching.h>
 #include <torch/csrc/jit/tensorexpr/tensor.h>
 
 namespace torch {
@@ -244,9 +245,9 @@ TORCH_API std::unique_ptr<CodeGen> CreateCodeGen(
     at::Device device = at::kCPU,
     const std::string& kernel_func_name = "func");
 
-class TORCH_API GenericIntrinsicsExpander : public IRMutator {
+class TORCH_API GenericIntrinsicsExpander : public IRMutatorCaching {
  protected:
-  ExprPtr mutate(IntrinsicsPtr v) override;
+  ExprPtr mutate_impl(IntrinsicsPtr v) override;
 };
 
 } // namespace tensorexpr

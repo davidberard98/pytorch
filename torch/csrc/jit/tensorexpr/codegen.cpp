@@ -60,7 +60,7 @@ std::unique_ptr<CodeGen> CreateCodeGen(
   return method(stmt, params, device, kernel_func_name);
 }
 
-ExprPtr GenericIntrinsicsExpander::mutate(IntrinsicsPtr v) {
+ExprPtr GenericIntrinsicsExpander::mutate_impl(IntrinsicsPtr v) {
   if (v->op_type() == kSigmoid) {
     auto x = v->param(0)->accept_mutator(this);
     auto one = expr_to_vec(
@@ -70,7 +70,7 @@ ExprPtr GenericIntrinsicsExpander::mutate(IntrinsicsPtr v) {
     ExprHandle y = one / (one + exp(zero - ExprHandle(x)));
     return y.node();
   }
-  return IRMutator::mutate(v);
+  return IRMutatorCaching::mutate(v);
 }
 
 void* CodeGen::argToPtr(const BufferArg& bufferArg, const CallArg& callArg) {

@@ -740,7 +740,7 @@ class FunctionInliner : public IRMutatorCaching {
     }
     BufPtr buf = v->buf();
     if (buf != buf_) {
-      return IRMutatorCaching::mutate(v);
+      return IRMutator::mutate(v);
     }
 
     if (v->indices().size() != buf->ndim()) {
@@ -778,7 +778,7 @@ class FunctionInliner : public IRMutatorCaching {
       return v;
     }
     if (!in_producer_ || v->op_type() != kRand) {
-      return IRMutatorCaching::mutate(v);
+      return IRMutator::mutate(v);
     }
 
     // Create a new Let Statement for the random variable, which we can refer
@@ -801,7 +801,7 @@ class FunctionInliner : public IRMutatorCaching {
     // remove it.
     if (v == producer_ && !outputs_.count(buf_)) {
       in_producer_ = true;
-      producer_ = to<Store>(IRMutatorCaching::mutate(v));
+      producer_ = to<Store>(IRMutator::mutate(v));
       if (!producer_) {
         // Producer statement for output buf should remain non-null in the fuser
         success_ = false;
@@ -810,7 +810,7 @@ class FunctionInliner : public IRMutatorCaching {
       in_producer_ = false;
       return nullptr;
     } else {
-      return IRMutatorCaching::mutate(v);
+      return IRMutator::mutate(v);
     }
   }
 
@@ -840,7 +840,7 @@ class FunctionInliner : public IRMutatorCaching {
     if (!success()) {
       return v;
     }
-    ForPtr res = to<For>(IRMutatorCaching::mutate(v));
+    ForPtr res = to<For>(IRMutator::mutate(v));
     if (!res) {
       return nullptr;
     }
@@ -2812,7 +2812,7 @@ class CacheReplacer : public IRMutatorCaching {
   ExprPtr mutate_impl(LoadPtr v) override {
     BufPtr buf = v->buf();
     if (buf != buf_) {
-      return IRMutatorCaching::mutate(v);
+      return IRMutator::mutate(v);
     }
 
     // Map indices to call-parameters.
@@ -2835,7 +2835,7 @@ class CacheReplacer : public IRMutatorCaching {
   StmtPtr mutate_impl(StorePtr v) override {
     BufPtr buf = v->buf();
     if (buf != buf_) {
-      return IRMutatorCaching::mutate(v);
+      return IRMutator::mutate(v);
     }
 
     ExprPtr newValue = v->value()->accept_mutator(this);
@@ -3248,7 +3248,7 @@ class RfactorStoreRewriter : public IRMutatorCaching {
 
   ExprPtr mutate_impl(LoadPtr v) override {
     if (v->buf() != old_buf_) {
-      return IRMutatorCaching::mutate(v);
+      return IRMutator::mutate(v);
     }
 
     TORCH_INTERNAL_ASSERT(
@@ -3264,7 +3264,7 @@ class RfactorStoreRewriter : public IRMutatorCaching {
       }
     }
     if (!equal_indices) {
-      return IRMutatorCaching::mutate(v);
+      return IRMutator::mutate(v);
     }
 
     return alloc<Load>(new_buf_, new_indices_);
@@ -3285,7 +3285,7 @@ class RfactorStoreRewriter : public IRMutatorCaching {
 
   StmtPtr mutate_impl(StorePtr v) override {
     if (v->buf() != old_buf_) {
-      return IRMutatorCaching::mutate(v);
+      return IRMutator::mutate(v);
     }
 
     TORCH_INTERNAL_ASSERT(
@@ -3301,7 +3301,7 @@ class RfactorStoreRewriter : public IRMutatorCaching {
       }
     }
     if (!equal_indices) {
-      return IRMutatorCaching::mutate(v);
+      return IRMutator::mutate(v);
     }
 
     ExprPtr new_value = v->value()->accept_mutator(this);
