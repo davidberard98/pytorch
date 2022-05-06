@@ -312,7 +312,7 @@ static bool CheckEqual(ExprPtr lhs, ExprPtr rhs) {
   return immediateEquals(diff_s.node(), 0);
 }
 
-class AtomicAddFuser : public IRMutator {
+class AtomicAddFuser : public IRMutatorCaching {
  public:
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
   AtomicAddFuser(
@@ -483,21 +483,21 @@ void CudaPrinter::visit(LetPtr v) {
 }
 
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-class PrioritizeLoad : public IRMutator {
+class PrioritizeLoad : public IRMutatorCaching {
  public:
   ExprPtr mutate(LoadPtr v) override {
     // Look at the declaration of this variable for more details.
     if (nested_if_then_else_ > 0) {
-      return IRMutator::mutate(v);
+      return IRMutatorCaching::mutate(v);
     }
     if (nested_let_) {
-      return IRMutator::mutate(v);
+      return IRMutatorCaching::mutate(v);
     }
     if (thread_local_bufs_.count(v->base_handle()) > 0) {
-      return IRMutator::mutate(v);
+      return IRMutatorCaching::mutate(v);
     }
     if (v->indices().size() == 0) {
-      return IRMutator::mutate(v);
+      return IRMutatorCaching::mutate(v);
     }
     if (nested_store_) {
       if (v->base_handle() == nested_store_->buf()->base_handle() &&
@@ -512,16 +512,16 @@ class PrioritizeLoad : public IRMutator {
           }
         }
         if (same) {
-          return IRMutator::mutate(v);
+          return IRMutatorCaching::mutate(v);
         }
       } else if (nested_store_->indices().empty()) {
-        return IRMutator::mutate(v);
+        return IRMutatorCaching::mutate(v);
       }
     }
 
     MemLoadList& load_list = load_stack_.back();
     VarPtr load_new_var = alloc<Var>("v", v->dtype());
-    ExprPtr new_value = IRMutator::mutate(v);
+    ExprPtr new_value = IRMutatorCaching::mutate(v);
     load_list.push_back(std::make_pair(load_new_var, new_value));
 
     return load_new_var;
@@ -552,14 +552,14 @@ class PrioritizeLoad : public IRMutator {
   StmtPtr mutate(StorePtr v) override {
     StorePtr last = nested_store_;
     nested_store_ = v;
-    StmtPtr s = IRMutator::mutate(v);
+    StmtPtr s = IRMutatorCaching::mutate(v);
     nested_store_ = last;
     return s;
   }
 
   StmtPtr mutate(LetPtr v) override {
     nested_let_ = true;
-    StmtPtr s = IRMutator::mutate(v);
+    StmtPtr s = IRMutatorCaching::mutate(v);
     nested_let_ = false;
     return s;
   }
@@ -584,7 +584,7 @@ class PrioritizeLoad : public IRMutator {
 
   ExprPtr mutate(IfThenElsePtr v) override {
     nested_if_then_else_++;
-    ExprPtr new_v = IRMutator::mutate(v);
+    ExprPtr new_v = IRMutatorCaching::mutate(v);
     nested_if_then_else_--;
     return new_v;
   }

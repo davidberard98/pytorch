@@ -3,61 +3,61 @@
 #include <torch/csrc/Export.h>
 #include <vector>
 
-#include <torch/csrc/jit/tensorexpr/ir_mutator.h>
+#include <torch/csrc/jit/tensorexpr/ir_mutator_caching.h>
 
 namespace torch {
 namespace jit {
 namespace tensorexpr {
 
-class TORCH_API IRCloner : public IRMutator {
+class TORCH_API IRCloner : public IRMutatorCaching {
  public:
   ~IRCloner() override = default;
-  ExprPtr mutate(AddPtr v) override;
-  ExprPtr mutate(SubPtr v) override;
-  ExprPtr mutate(MulPtr v) override;
-  ExprPtr mutate(DivPtr v) override;
-  ExprPtr mutate(ModPtr v) override;
-  ExprPtr mutate(MaxPtr v) override;
-  ExprPtr mutate(MinPtr v) override;
-  ExprPtr mutate(AndPtr v) override;
-  ExprPtr mutate(OrPtr v) override;
-  ExprPtr mutate(XorPtr v) override;
-  ExprPtr mutate(LshiftPtr v) override;
-  ExprPtr mutate(RshiftPtr v) override;
-  ExprPtr mutate(CompareSelectPtr v) override;
-#define IMM_MUTATE_DECLARE(Type, Name) ExprPtr mutate(Name##ImmPtr v) override;
+  ExprPtr mutate_impl(AddPtr v) override;
+  ExprPtr mutate_impl(SubPtr v) override;
+  ExprPtr mutate_impl(MulPtr v) override;
+  ExprPtr mutate_impl(DivPtr v) override;
+  ExprPtr mutate_impl(ModPtr v) override;
+  ExprPtr mutate_impl(MaxPtr v) override;
+  ExprPtr mutate_impl(MinPtr v) override;
+  ExprPtr mutate_impl(AndPtr v) override;
+  ExprPtr mutate_impl(OrPtr v) override;
+  ExprPtr mutate_impl(XorPtr v) override;
+  ExprPtr mutate_impl(LshiftPtr v) override;
+  ExprPtr mutate_impl(RshiftPtr v) override;
+  ExprPtr mutate_impl(CompareSelectPtr v) override;
+#define IMM_MUTATE_DECLARE(Type, Name) ExprPtr mutate_impl(Name##ImmPtr v) override;
   AT_FORALL_SCALAR_TYPES_AND3(Bool, Half, BFloat16, IMM_MUTATE_DECLARE);
 #undef IMM_MUTATE_DECLARE
-  ExprPtr mutate(CastPtr v) override;
-  ExprPtr mutate(BitCastPtr v) override;
-  ExprPtr mutate(VarPtr v) override;
-  ExprPtr mutate(BufPtr v) override;
-  ExprPtr mutate(RampPtr v) override;
-  ExprPtr mutate(LoadPtr v) override;
-  ExprPtr mutate(BroadcastPtr v) override;
-  ExprPtr mutate(IfThenElsePtr v) override;
-  ExprPtr mutate(IntrinsicsPtr v) override;
+  ExprPtr mutate_impl(CastPtr v) override;
+  ExprPtr mutate_impl(BitCastPtr v) override;
+  ExprPtr mutate_impl(VarPtr v) override;
+  ExprPtr mutate_impl(BufPtr v) override;
+  ExprPtr mutate_impl(RampPtr v) override;
+  ExprPtr mutate_impl(LoadPtr v) override;
+  ExprPtr mutate_impl(BroadcastPtr v) override;
+  ExprPtr mutate_impl(IfThenElsePtr v) override;
+  ExprPtr mutate_impl(IntrinsicsPtr v) override;
 
-  ExprPtr mutate(TermPtr v) override;
-  ExprPtr mutate(PolynomialPtr v) override;
-  ExprPtr mutate(RoundOffPtr v) override;
-  ExprPtr mutate(MaxTermPtr v) override;
-  ExprPtr mutate(MinTermPtr v) override;
+  ExprPtr mutate_impl(TermPtr v) override;
+  ExprPtr mutate_impl(PolynomialPtr v) override;
+  ExprPtr mutate_impl(RoundOffPtr v) override;
+  ExprPtr mutate_impl(MaxTermPtr v) override;
+  ExprPtr mutate_impl(MinTermPtr v) override;
 
-  ExprPtr mutate(ReduceOpPtr v) override;
+  ExprPtr mutate_impl(ReduceOpPtr v) override;
 
-  StmtPtr mutate(ForPtr v) override;
-  StmtPtr mutate(BlockPtr v) override;
-  StmtPtr mutate(StorePtr v) override;
-  StmtPtr mutate(AtomicAddPtr v) override;
-  StmtPtr mutate(SyncThreadsPtr v) override;
-  StmtPtr mutate(ExternalCallPtr v) override;
-  StmtPtr mutate(ExternalCallWithAllocPtr v) override;
+  StmtPtr mutate_impl(ForPtr v) override;
+  StmtPtr mutate_impl(BlockPtr v) override;
+  StmtPtr mutate_impl(StorePtr v) override;
+  StmtPtr mutate_impl(AtomicAddPtr v) override;
+  StmtPtr mutate_impl(SyncThreadsPtr v) override;
+  StmtPtr mutate_impl(ExternalCallPtr v) override;
+  StmtPtr mutate_impl(ExternalCallWithAllocPtr v) override;
 
-  StmtPtr mutate(AllocatePtr v) override;
-  StmtPtr mutate(FreePtr v) override;
-  StmtPtr mutate(LetPtr v) override;
-  StmtPtr mutate(CondPtr v) override;
+  StmtPtr mutate_impl(AllocatePtr v) override;
+  StmtPtr mutate_impl(FreePtr v) override;
+  StmtPtr mutate_impl(LetPtr v) override;
+  StmtPtr mutate_impl(CondPtr v) override;
 };
 
 } // namespace tensorexpr

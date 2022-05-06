@@ -12,6 +12,7 @@
 #include <torch/csrc/jit/tensorexpr/codegen.h>
 #include <torch/csrc/jit/tensorexpr/eval.h>
 #include <torch/csrc/jit/tensorexpr/ir.h>
+#include <torch/csrc/jit/tensorexpr/ir_mutator_caching.h>
 #include <torch/csrc/jit/tensorexpr/ir_printer.h>
 #include <torch/csrc/jit/tensorexpr/ir_visitor.h>
 #include <torch/csrc/jit/tensorexpr/llvm_codegen.h>
@@ -73,7 +74,7 @@ class CudaAnalysis : public IRVisitor {
 //
 // We do this by segmenting each block into chunks which should have the same
 // execution parameters, then if those params differ from the max mask each dim.
-class GPUMetaVarRewriter : public IRMutator {
+class GPUMetaVarRewriter : public IRMutatorCaching {
  public:
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
   explicit GPUMetaVarRewriter(const CudaAnalysis* cuda_analysis)

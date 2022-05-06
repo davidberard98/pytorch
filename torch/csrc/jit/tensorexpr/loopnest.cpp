@@ -19,7 +19,7 @@
 #include <torch/csrc/jit/tensorexpr/expr.h>
 #include <torch/csrc/jit/tensorexpr/ir.h>
 #include <torch/csrc/jit/tensorexpr/ir_cloner.h>
-#include <torch/csrc/jit/tensorexpr/ir_mutator.h>
+#include <torch/csrc/jit/tensorexpr/ir_mutator_caching.h>
 #include <torch/csrc/jit/tensorexpr/ir_printer.h>
 #include <torch/csrc/jit/tensorexpr/ir_simplifier.h>
 #include <torch/csrc/jit/tensorexpr/ir_verifier.h>
@@ -96,13 +96,13 @@ const std::unordered_set<BufPtr> LoopNest::getInputBufs() const {
   return result;
 }
 
-class IndexFlattener : public IRMutator {
+class IndexFlattener : public IRMutatorCaching {
  public:
   StmtPtr flatten(StmtPtr s) {
     return s->accept_mutator(this);
   }
 
-  ExprPtr mutate(LoadPtr v) override {
+  ExprPtr mutate_impl(LoadPtr v) override {
     if (v->indices().size() == 1) {
       return v;
     }
@@ -113,7 +113,7 @@ class IndexFlattener : public IRMutator {
             v->buf()->dims(), v->indices(), v->buf()->strides())}));
   }
 
-  StmtPtr mutate(StorePtr v) override {
+  StmtPtr mutate_impl(StorePtr v) override {
     ExprPtr value = v->value();
     ExprPtr new_value = value->accept_mutator(this);
     if (v->indices().size() == 1 && value == new_value) {
@@ -148,9 +148,9 @@ std::string sanitizeName(const std::string& input_name) {
   return sanitized_name.str();
 }
 
-class VarNameSanitizer : public IRMutator {
+class VarNameSanitizer : public IRMutatorCaching {
  public:
-  ExprPtr mutate(BufPtr v) override {
+  ExprPtr mutate_impl(BufPtr v) override {
     if (seen_bufs_.count(v)) {
       return v;
     }
@@ -165,7 +165,7 @@ class VarNameSanitizer : public IRMutator {
     return v;
   }
 
-  ExprPtr mutate(VarPtr v) override {
+  ExprPtr mutate_impl(VarPtr v) override {
     if (seen_vars_.count(v)) {
       return v;
     }
@@ -180,7 +180,7 @@ class VarNameSanitizer : public IRMutator {
     return v;
   }
 
-  StmtPtr mutate(ForPtr v) override {
+  StmtPtr mutate_impl(ForPtr v) override {
     auto new_name = getNextAvailableName(getIndexVarNameAtLevel(level_));
     if (seen_index_vars_.count(v->var())) {
       auto new_var = alloc<Var>("", v->var()->dtype());
@@ -233,7 +233,7 @@ StmtPtr LoopNest::sanitizeNames(StmtPtr s) {
   return s;
 }
 
-class Vectorizer : public IRMutator {
+class Vectorizer : public IRMutatorCaching {
  public:
   StmtPtr vectorize(ForPtr v) {
     StmtPtr body = v->body();
@@ -273,77 +273,77 @@ class Vectorizer : public IRMutator {
     return success_;
   }
 
-  ExprPtr mutate(AddPtr v) override {
+  ExprPtr mutate_impl(AddPtr v) override {
     std::vector<ExprPtr> inputs = {v->lhs(), v->rhs()};
     return try_vectorize(v, inputs, [&]() {
       return ExprHandle(inputs[0]) + ExprHandle(inputs[1]);
     });
   }
 
-  ExprPtr mutate(SubPtr v) override {
+  ExprPtr mutate_impl(SubPtr v) override {
     std::vector<ExprPtr> inputs = {v->lhs(), v->rhs()};
     return try_vectorize(v, inputs, [&]() {
       return ExprHandle(inputs[0]) - ExprHandle(inputs[1]);
     });
   }
 
-  ExprPtr mutate(MulPtr v) override {
+  ExprPtr mutate_impl(MulPtr v) override {
     std::vector<ExprPtr> inputs = {v->lhs(), v->rhs()};
     return try_vectorize(v, inputs, [&]() {
       return ExprHandle(inputs[0]) * ExprHandle(inputs[1]);
     });
   }
 
-  ExprPtr mutate(DivPtr v) override {
+  ExprPtr mutate_impl(DivPtr v) override {
     std::vector<ExprPtr> inputs = {v->lhs(), v->rhs()};
     return try_vectorize(v, inputs, [&]() {
       return ExprHandle(inputs[0]) / ExprHandle(inputs[1]);
     });
   }
 
-  ExprPtr mutate(ModPtr v) override {
+  ExprPtr mutate_impl(ModPtr v) override {
     std::vector<ExprPtr> inputs = {v->lhs(), v->rhs()};
     return try_vectorize(v, inputs, [&]() {
       return ExprHandle(inputs[0]) % ExprHandle(inputs[1]);
     });
   }
 
-  ExprPtr mutate(AndPtr v) override {
+  ExprPtr mutate_impl(AndPtr v) override {
     std::vector<ExprPtr> inputs = {v->lhs(), v->rhs()};
     return try_vectorize(v, inputs, [&]() {
       return ExprHandle(inputs[0]) & ExprHandle(inputs[1]);
     });
   }
 
-  ExprPtr mutate(OrPtr v) override {
+  ExprPtr mutate_impl(OrPtr v) override {
     std::vector<ExprPtr> inputs = {v->lhs(), v->rhs()};
     return try_vectorize(v, inputs, [&]() {
       return ExprHandle(inputs[0]) | ExprHandle(inputs[1]);
     });
   }
 
-  ExprPtr mutate(XorPtr v) override {
+  ExprPtr mutate_impl(XorPtr v) override {
     std::vector<ExprPtr> inputs = {v->lhs(), v->rhs()};
     return try_vectorize(v, inputs, [&]() {
       return ExprHandle(inputs[0]) ^ ExprHandle(inputs[1]);
     });
   }
 
-  ExprPtr mutate(LshiftPtr v) override {
+  ExprPtr mutate_impl(LshiftPtr v) override {
     std::vector<ExprPtr> inputs = {v->lhs(), v->rhs()};
     return try_vectorize(v, inputs, [&]() {
       return ExprHandle(inputs[0]) << ExprHandle(inputs[1]);
     });
   }
 
-  ExprPtr mutate(RshiftPtr v) override {
+  ExprPtr mutate_impl(RshiftPtr v) override {
     std::vector<ExprPtr> inputs = {v->lhs(), v->rhs()};
     return try_vectorize(v, inputs, [&]() {
       return ExprHandle(inputs[0]) >> ExprHandle(inputs[1]);
     });
   }
 
-  ExprPtr mutate(MaxPtr v) override {
+  ExprPtr mutate_impl(MaxPtr v) override {
     std::vector<ExprPtr> inputs = {v->lhs(), v->rhs()};
     return try_vectorize(v, inputs, [&]() {
       return Max::make(
@@ -351,7 +351,7 @@ class Vectorizer : public IRMutator {
     });
   }
 
-  ExprPtr mutate(MinPtr v) override {
+  ExprPtr mutate_impl(MinPtr v) override {
     std::vector<ExprPtr> inputs = {v->lhs(), v->rhs()};
     return try_vectorize(v, inputs, [&]() {
       return Min::make(
@@ -359,7 +359,7 @@ class Vectorizer : public IRMutator {
     });
   }
 
-  ExprPtr mutate(CompareSelectPtr v) override {
+  ExprPtr mutate_impl(CompareSelectPtr v) override {
     std::vector<ExprPtr> inputs = {
         v->lhs(), v->rhs(), v->ret_val1(), v->ret_val2()};
     return try_vectorize(v, inputs, [&]() {
@@ -373,7 +373,7 @@ class Vectorizer : public IRMutator {
     });
   }
 
-  ExprPtr mutate(BitCastPtr v) override {
+  ExprPtr mutate_impl(BitCastPtr v) override {
     std::vector<ExprPtr> inputs = {v->src_value()};
     return try_vectorize(v, inputs, [&]() {
       return BitCast::make(
@@ -381,7 +381,7 @@ class Vectorizer : public IRMutator {
     });
   }
 
-  ExprPtr mutate(CastPtr v) override {
+  ExprPtr mutate_impl(CastPtr v) override {
     std::vector<ExprPtr> inputs = {v->src_value()};
     return try_vectorize(v, inputs, [&]() {
       return Cast::make(
@@ -389,7 +389,7 @@ class Vectorizer : public IRMutator {
     });
   }
 
-  ExprPtr mutate(VarPtr v) override {
+  ExprPtr mutate_impl(VarPtr v) override {
     if (v == var_) {
       return Ramp::make(
                  ExprHandle(start_), ExprHandle(immLike(start_, 1)), lanes_)
@@ -399,7 +399,7 @@ class Vectorizer : public IRMutator {
     return v;
   }
 
-  ExprPtr mutate(RampPtr v) override {
+  ExprPtr mutate_impl(RampPtr v) override {
     ExprPtr base = v->base();
     ExprPtr stride = v->stride();
 
@@ -415,7 +415,7 @@ class Vectorizer : public IRMutator {
     return v;
   }
 
-  ExprPtr mutate(LoadPtr v) override {
+  ExprPtr mutate_impl(LoadPtr v) override {
     Dtype dtype(v->dtype().scalar_type(), lanes_);
     BufPtr buf = v->buf();
     std::vector<ExprPtr> inputs = {v->flat_index()};
@@ -424,7 +424,7 @@ class Vectorizer : public IRMutator {
     });
   }
 
-  ExprPtr mutate(ReduceOpPtr v) override {
+  ExprPtr mutate_impl(ReduceOpPtr v) override {
     Dtype dtype(v->dtype().scalar_type(), lanes_);
 
     std::vector<ExprPtr> inputs = {v->body()};
@@ -436,7 +436,7 @@ class Vectorizer : public IRMutator {
     return out;
   }
 
-  ExprPtr mutate(BroadcastPtr v) override {
+  ExprPtr mutate_impl(BroadcastPtr v) override {
     ExprPtr val = v->value();
     ExprPtr new_val = val->accept_mutator(this);
     if (new_val == val) {
@@ -448,7 +448,7 @@ class Vectorizer : public IRMutator {
     return v;
   }
 
-  ExprPtr mutate(IfThenElsePtr v) override {
+  ExprPtr mutate_impl(IfThenElsePtr v) override {
     ExprPtr condition = v->condition();
     ExprPtr new_condition = condition->accept_mutator(this);
     if (new_condition != condition) {
@@ -464,14 +464,14 @@ class Vectorizer : public IRMutator {
     });
   }
 
-  ExprPtr mutate(IntrinsicsPtr v) override {
+  ExprPtr mutate_impl(IntrinsicsPtr v) override {
     std::vector<ExprPtr> inputs = v->params();
     return try_vectorize(v, inputs, [&]() {
       return ExprHandle(alloc<Intrinsics>(v->op_type(), inputs));
     });
   }
 
-  StmtPtr mutate(StorePtr v) override {
+  StmtPtr mutate_impl(StorePtr v) override {
     BufPtr buf = v->buf();
     std::vector<ExprPtr> inputs = {v->flat_index(), v->value()};
     return try_vectorize(v, inputs, [&]() {
@@ -480,7 +480,7 @@ class Vectorizer : public IRMutator {
     });
   }
 
-  StmtPtr mutate(ForPtr v) override {
+  StmtPtr mutate_impl(ForPtr v) override {
     VarPtr var = v->var();
     ExprPtr start = v->start();
     ExprPtr stop = v->stop();
@@ -505,7 +505,7 @@ class Vectorizer : public IRMutator {
     return alloc<For>(var, new_start, new_stop, new_body, loop_options);
   }
 
-  StmtPtr mutate(BlockPtr v) override {
+  StmtPtr mutate_impl(BlockPtr v) override {
     // IRMutator does in-place mutations. But the logic in vectorization checks
     // for success by looking for a new stmt. So, we override the in-place
     // mutations and create a clone here if any of its statements change.
@@ -652,7 +652,7 @@ void LoopNest::initialize(
   root_stmt_ = alloc<Block>(loops);
 }
 
-class FunctionInliner : public IRMutator {
+class FunctionInliner : public IRMutatorCaching {
  public:
   FunctionInliner(StorePtr producer, std::unordered_set<BufPtr> outputs)
       : buf_(producer->buf()),
@@ -734,13 +734,13 @@ class FunctionInliner : public IRMutator {
     return result;
   }
 
-  ExprPtr mutate(LoadPtr v) override {
+  ExprPtr mutate_impl(LoadPtr v) override {
     if (!success()) {
       return v;
     }
     BufPtr buf = v->buf();
     if (buf != buf_) {
-      return IRMutator::mutate(v);
+      return IRMutatorCaching::mutate(v);
     }
 
     if (v->indices().size() != buf->ndim()) {
@@ -758,7 +758,7 @@ class FunctionInliner : public IRMutator {
   }
 
   // Replace the target variable with the caller expressions.
-  ExprPtr mutate(VarPtr v) override {
+  ExprPtr mutate_impl(VarPtr v) override {
     if (!success()) {
       return v;
     }
@@ -773,12 +773,12 @@ class FunctionInliner : public IRMutator {
   }
 
   // Handle random intrinsics which should be cached.
-  ExprPtr mutate(IntrinsicsPtr v) override {
+  ExprPtr mutate_impl(IntrinsicsPtr v) override {
     if (!success()) {
       return v;
     }
     if (!in_producer_ || v->op_type() != kRand) {
-      return IRMutator::mutate(v);
+      return IRMutatorCaching::mutate(v);
     }
 
     // Create a new Let Statement for the random variable, which we can refer
@@ -793,7 +793,7 @@ class FunctionInliner : public IRMutator {
   }
 
   // Remove the buffer write from the inlined function.
-  StmtPtr mutate(StorePtr v) override {
+  StmtPtr mutate_impl(StorePtr v) override {
     if (!success()) {
       return v;
     }
@@ -801,7 +801,7 @@ class FunctionInliner : public IRMutator {
     // remove it.
     if (v == producer_ && !outputs_.count(buf_)) {
       in_producer_ = true;
-      producer_ = to<Store>(IRMutator::mutate(v));
+      producer_ = to<Store>(IRMutatorCaching::mutate(v));
       if (!producer_) {
         // Producer statement for output buf should remain non-null in the fuser
         success_ = false;
@@ -810,12 +810,12 @@ class FunctionInliner : public IRMutator {
       in_producer_ = false;
       return nullptr;
     } else {
-      return IRMutator::mutate(v);
+      return IRMutatorCaching::mutate(v);
     }
   }
 
   // Any Random Instrinsics that were turned into vars must be inserted here.
-  StmtPtr mutate(BlockPtr v) override {
+  StmtPtr mutate_impl(BlockPtr v) override {
     if (!success()) {
       return v;
     }
@@ -836,11 +836,11 @@ class FunctionInliner : public IRMutator {
     return Block::make(stmts);
   }
 
-  StmtPtr mutate(ForPtr v) override {
+  StmtPtr mutate_impl(ForPtr v) override {
     if (!success()) {
       return v;
     }
-    ForPtr res = to<For>(IRMutator::mutate(v));
+    ForPtr res = to<For>(IRMutatorCaching::mutate(v));
     if (!res) {
       return nullptr;
     }
@@ -1152,12 +1152,12 @@ BlockPtr findLowestContainingBlock(const std::vector<BufLoadOrStoreUse>& uses) {
   return b;
 }
 
-class StmtDeleter : public IRMutator {
+class StmtDeleter : public IRMutatorCaching {
  public:
   StmtDeleter(const std::unordered_set<StmtPtr>& targets) : targets_(targets) {}
 
  private:
-  StmtPtr mutate(BlockPtr v) override {
+  StmtPtr mutate_impl(BlockPtr v) override {
     std::vector<StmtPtr> stmts;
 
     for (auto s : v->stmts()) {
@@ -1225,7 +1225,7 @@ class IfThenElseReplacer : public IRCloner {
   IfThenElseReplacer(IfThenElsePtr to_replace, ExprPtr new_expr)
       : to_replace_(to_replace), new_expr_(new_expr) {}
 
-  ExprPtr mutate(IfThenElsePtr i) override {
+  ExprPtr mutate_impl(IfThenElsePtr i) override {
     if (i == to_replace_) {
       return new_expr_;
     }
@@ -2751,7 +2751,7 @@ StmtPtr FlattenIndexes(StmtPtr s) {
 
 // Auxiliary class for rewriting we're doing in `compute_at`. See
 // LoopNest::computeAt for more details.
-class LoopComputeAtRewriter : public IRMutator {
+class LoopComputeAtRewriter : public IRMutatorCaching {
  public:
   LoopComputeAtRewriter(
       BufPtr buf,
@@ -2764,7 +2764,7 @@ class LoopComputeAtRewriter : public IRMutator {
   BufPtr new_buf_;
   std::vector<ExprPtr> offsets_;
 
-  ExprPtr mutate(LoadPtr v) override {
+  ExprPtr mutate_impl(LoadPtr v) override {
     if (v->buf() != buf_) {
       return v;
     }
@@ -2803,16 +2803,16 @@ static std::vector<VarPtr> getOuterLoopIndexes(StmtPtr s) {
   return res;
 }
 
-class CacheReplacer : public IRMutator {
+class CacheReplacer : public IRMutatorCaching {
  public:
   CacheReplacer(BufPtr buffer, BufPtr cache, std::vector<ExprPtr>& offsets)
       : buf_(buffer), cache_(cache), offsets_(offsets) {}
 
  private:
-  ExprPtr mutate(LoadPtr v) override {
+  ExprPtr mutate_impl(LoadPtr v) override {
     BufPtr buf = v->buf();
     if (buf != buf_) {
-      return IRMutator::mutate(v);
+      return IRMutatorCaching::mutate(v);
     }
 
     // Map indices to call-parameters.
@@ -2832,10 +2832,10 @@ class CacheReplacer : public IRMutator {
     return v;
   }
 
-  StmtPtr mutate(StorePtr v) override {
+  StmtPtr mutate_impl(StorePtr v) override {
     BufPtr buf = v->buf();
     if (buf != buf_) {
-      return IRMutator::mutate(v);
+      return IRMutatorCaching::mutate(v);
     }
 
     ExprPtr newValue = v->value()->accept_mutator(this);
@@ -3231,7 +3231,7 @@ void LoopNest::computeAt(StmtPtr s, ForPtr f) {
   }
 }
 
-class RfactorStoreRewriter : public IRMutator {
+class RfactorStoreRewriter : public IRMutatorCaching {
  public:
   RfactorStoreRewriter(
       BufPtr old_buf,
@@ -3246,9 +3246,9 @@ class RfactorStoreRewriter : public IRMutator {
     new_indices_.push_back(reduction_var_);
   }
 
-  ExprPtr mutate(LoadPtr v) override {
+  ExprPtr mutate_impl(LoadPtr v) override {
     if (v->buf() != old_buf_) {
-      return IRMutator::mutate(v);
+      return IRMutatorCaching::mutate(v);
     }
 
     TORCH_INTERNAL_ASSERT(
@@ -3264,13 +3264,13 @@ class RfactorStoreRewriter : public IRMutator {
       }
     }
     if (!equal_indices) {
-      return IRMutator::mutate(v);
+      return IRMutatorCaching::mutate(v);
     }
 
     return alloc<Load>(new_buf_, new_indices_);
   }
 
-  ExprPtr mutate(ReduceOpPtr v) override {
+  ExprPtr mutate_impl(ReduceOpPtr v) override {
     ExprPtr body_new = v->body()->accept_mutator(this);
 
     std::vector<VarPtr> new_reduce_args;
@@ -3283,9 +3283,9 @@ class RfactorStoreRewriter : public IRMutator {
     return alloc<ReduceOp>(body_new, new_reduce_args, v->reducer());
   }
 
-  StmtPtr mutate(StorePtr v) override {
+  StmtPtr mutate_impl(StorePtr v) override {
     if (v->buf() != old_buf_) {
-      return IRMutator::mutate(v);
+      return IRMutatorCaching::mutate(v);
     }
 
     TORCH_INTERNAL_ASSERT(
@@ -3301,7 +3301,7 @@ class RfactorStoreRewriter : public IRMutator {
       }
     }
     if (!equal_indices) {
-      return IRMutator::mutate(v);
+      return IRMutatorCaching::mutate(v);
     }
 
     ExprPtr new_value = v->value()->accept_mutator(this);
