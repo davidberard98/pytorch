@@ -341,6 +341,7 @@ core_sources_full_mobile_no_backend_interface = [
     "torch/csrc/jit/tensorexpr/ir_simplifier.cpp",
     "torch/csrc/jit/tensorexpr/ir_verifier.cpp",
     "torch/csrc/jit/tensorexpr/ir_visitor.cpp",
+    "torch/csrc/jit/tensorexpr/ir_visitor_caching.cpp",
     "torch/csrc/jit/tensorexpr/kernel.cpp",
     "torch/csrc/jit/tensorexpr/llvm_codegen.cpp",
     "torch/csrc/jit/tensorexpr/llvm_jit.cpp",
