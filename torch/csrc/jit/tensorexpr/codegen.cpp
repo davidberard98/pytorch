@@ -70,7 +70,7 @@ ExprPtr GenericIntrinsicsExpander::mutate_impl(IntrinsicsPtr v) {
     ExprHandle y = one / (one + exp(zero - ExprHandle(x)));
     return y.node();
   }
-  return IRMutatorCaching::mutate(v);
+  return IRMutator::mutate(v);
 }
 
 void* CodeGen::argToPtr(const BufferArg& bufferArg, const CallArg& callArg) {
