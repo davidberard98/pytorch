@@ -647,6 +647,6 @@ class TestWith(JitTestCase):
             return ans
 
         fn_s = torch.jit.script(fn)
-        self.assertEqual(120, fn_s(0))
-        self.assertEqual(120, fn_s(2))
-        self.assertEqual(165, fn_s(1))
+        self.assertEqual(165, fn_s(0))
+        self.assertEqual(165, fn_s(2))
+        self.assertEqual(120, fn_s(1))

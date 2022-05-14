@@ -706,11 +706,12 @@ static void convertEnterExitNodesToWithBlocks(std::shared_ptr<Graph>& graph) {
 
     for (Value* output : leaving_scope) {
       body_block->registerOutput(output);
-      Node* uninit = graph->createUninitialized(output->type());
+      Node* uninit = graph->createNone();
       uninit->insertBefore(exit_block->return_node());
       exit_block->registerOutput(uninit->output());
       Value* with_output = with->addOutput();
-      for (auto& use : output->uses()) {
+      std::vector<Use> uses = output->uses();
+      for (auto& use : uses) {
         if (use.user != body_block->return_node() && use.user->isAfter(exit)) {
           use.user->replaceInput(use.offset, with_output);
         }
