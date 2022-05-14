@@ -636,17 +636,63 @@ class TestWith(JitTestCase):
     def test_with_and_continue(self) -> int:
         def fn(a: int):
             ans = 0
+            ans2 = 0
             for i in range(10):
                 with torch.no_grad():
                     if (a + i) % 2 == 0:
                         continue
                     r = i * i
                 ans += r
-                print(r)
+                ans2 += r * i // 2
 
-            return ans
+            return ans, ans2
 
         fn_s = torch.jit.script(fn)
-        self.assertEqual(165, fn_s(0))
-        self.assertEqual(165, fn_s(2))
-        self.assertEqual(120, fn_s(1))
+        self.assertEqual(165, fn_s(0)[0])
+        self.assertEqual(165, fn_s(2)[0])
+        self.assertEqual(120, fn_s(1)[0])
+
+    def test_with_and_continue_2(self) -> int:
+        def fn(a: int):
+            ans = 0
+            ans2 = 0
+            for i in range(10):
+                with torch.no_grad():
+                    if (a + i) % 2 == 0:
+                        continue
+                    r = i * i
+                    ans += r
+                ans2 += r
+            return ans, ans2
+
+        fn_s = torch.jit.script(fn)
+        self.assertEqual(fn(0), fn_s(0))
+        self.assertEqual(fn(1), fn_s(1))
+        self.assertEqual(fn(2), fn_s(2))
+
+    def test_with_and_continue_nested(self) -> int:
+        def fn(a: int):
+            ans = 0
+            ans2 = 0
+            for i in range(100):
+                with torch.no_grad():
+                    v1 = i * 2
+                    if (a + i) % 6 == 0:
+                        continue
+                    with torch.no_grad():
+                        if (a + i) % 2 == 0:
+                            continue
+                        v2 = i * i
+                    v3 = i * 3 + 4
+                    if (a + i + 1) % 7 == 0:
+                        continue
+                    v4 = i * i * i
+                    ans += v2 + v3 + v1 + v4
+                ans2 += v1 + v2 + v3 + v4
+            return ans, ans2
+
+        fn_s = torch.jit.script(fn)
+
+        self.assertEqual(fn(0), fn_s(0))
+        self.assertEqual(fn(1), fn_s(1))
+        self.assertEqual(fn(2), fn_s(2))

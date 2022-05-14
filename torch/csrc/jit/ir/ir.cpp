@@ -9,6 +9,7 @@
 #include <torch/csrc/jit/frontend/error_report.h>
 #include <torch/csrc/jit/frontend/schema_matching.h>
 #include <torch/csrc/jit/ir/constants.h>
+#include <torch/csrc/jit/jit_log.h>
 #include <torch/csrc/jit/runtime/operator.h>
 #include <torch/csrc/jit/serialization/python_print.h>
 
@@ -1312,7 +1313,8 @@ Node::Node(Graph* graph_, NodeKind kind_)
 
 void Node::eraseOutput(size_t i) {
   AT_ASSERT(i < outputs_.size());
-  AT_ASSERT(outputs_[i]->uses().empty());
+  // AT_ASSERT(outputs_[i]->uses().empty());
+  TORCH_INTERNAL_ASSERT(outputs_[i]->uses().empty(), ".. ", outputs_[i]->debugName());
   op_ = nullptr;
   Value* n = outputs_[i];
   outputs_.erase(outputs_.begin() + i);

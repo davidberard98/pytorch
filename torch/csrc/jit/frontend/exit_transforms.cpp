@@ -5,6 +5,7 @@
 #include <torch/csrc/jit/frontend/error_report.h>
 #include <torch/csrc/jit/ir/ir.h>
 #include <torch/csrc/jit/ir/ir_views.h>
+#include <torch/csrc/jit/jit_log.h>
 #include <torch/csrc/jit/passes/dead_code_elimination.h>
 #include <torch/csrc/jit/runtime/graph_iterator.h>
 
@@ -20,6 +21,37 @@ namespace jit {
 enum class ExitStatus { WILL, MIGHT, WONT, THROWS };
 
 enum class Transform { Returns, LoopContinuations };
+
+void checkForValidUsers(Block* block, std::unordered_set<Node*>& before) {
+  std::vector<Node*> my_nodes;
+  for (auto& in : block->inputs()) {
+    my_nodes.push_back(in->node());
+    before.insert(in->node());
+    break;
+  }
+  for (auto it = block->nodes().begin(); it != block->nodes().end(); ++it) {
+    Node* n = *it;
+    for (auto& b : n->blocks()) {
+      checkForValidUsers(b, before);
+    }
+    for (auto& in : n->inputs()) {
+      TORCH_INTERNAL_ASSERT(before.count(in->node()), *n, " from ", *in->node());
+    }
+    my_nodes.push_back(n);
+    before.insert(n);
+  }
+  for (auto& n : my_nodes) {
+    before.erase(n);
+  }
+}
+
+void checkForValidUsers(std::shared_ptr<Graph>& g) {
+  std::unordered_set<Node*> before;
+  for (auto& in : g->inputs()) {
+    before.insert(in->node());
+  }
+  checkForValidUsers(g->block(), before);
+}
 
 // hasExited() indicates whether or not an exit has been hit.
 // The ExitTransform pass maintains a false boolean false_val_ && a true boolean
@@ -674,7 +706,9 @@ static void convertEnterExitNodesToWithBlocks(std::shared_ptr<Graph>& graph) {
 
   // Now, add a With block for each Enter-Exit pair. The innermost pairs were
   // found first, so they will be converted first.
+  size_t amt = 0;
   for (auto& pair : enter_exit_pairs) {
+    GRAPH_DEBUG(" BEFORE TRANSFORMING #", amt++, ": ", *graph);
     Node* enter = pair.first;
     Node* exit = pair.second;
 
@@ -688,10 +722,13 @@ static void convertEnterExitNodesToWithBlocks(std::shared_ptr<Graph>& graph) {
 
     std::vector<Value*> leaving_scope;
 
+    GRAPH_DEBUG(" ENTERIS <--> ", *enter);
+    GRAPH_DEBUG(" EXIT IS <--> ", *exit);
+
     // Move all of the nodes between the Enter and Exit into the body block.
     while (cur != exit) {
       auto* next = cur->next();
-      for (auto& output : next->outputs()) {
+      for (auto& output : cur->outputs()) {
         for (auto& use : output->uses()) {
           if (use.user->isAfter(exit)) {
             leaving_scope.emplace_back(output);
@@ -705,14 +742,17 @@ static void convertEnterExitNodesToWithBlocks(std::shared_ptr<Graph>& graph) {
     }
 
     for (Value* output : leaving_scope) {
+      GRAPH_DEBUG(" -> VALUE IS ", output->debugName());
+      std::vector<Use> uses = output->uses();
       body_block->registerOutput(output);
       Node* uninit = graph->createNone();
       uninit->insertBefore(exit_block->return_node());
       exit_block->registerOutput(uninit->output());
       Value* with_output = with->addOutput();
-      std::vector<Use> uses = output->uses();
       for (auto& use : uses) {
-        if (use.user != body_block->return_node() && use.user->isAfter(exit)) {
+        GRAPH_DEBUG("  ---> node ", *use.user);
+        if (use.user->owningBlock() == exit->owningBlock() && use.user->isAfter(exit)) {
+          GRAPH_DEBUG("        **");
           use.user->replaceInput(use.offset, with_output);
         }
       }
@@ -867,11 +907,19 @@ static void convertWithBlocksToEnterExitNodes(std::shared_ptr<Graph>& graph) {
 //     -> (%44, %i)
 
 void TransformExits(std::shared_ptr<Graph>& graph) {
+  GRAPH_DEBUG("Before convertEnterExitNodes: ", *graph);
+  checkForValidUsers(graph);
   convertEnterExitNodesToWithBlocks(graph);
   ExitTransformer e_loop(graph);
+  GRAPH_DEBUG("Before loop continuations: ", *graph);
+  checkForValidUsers(graph);
   e_loop.transformLoopContinuations();
   ExitTransformer e_ret(graph);
+  GRAPH_DEBUG("Before transform returns: ", *graph);
+  //checkForValidUsers(graph);
   e_ret.transformReturnStmts();
+  GRAPH_DEBUG("Before inlineConsecutiveIfs: ", *graph);
+  //checkForValidUsers(graph);
   inlineConsecutiveIfs(graph->block());
   convertWithBlocksToEnterExitNodes(graph);
 }
