@@ -79,10 +79,12 @@ bool isDifferentiable(const Node* n) {
   }
 
   auto schema = n->maybeSchema();
+  std::cerr << " LOOKING AT SCHEMA FOR " << *n << std::endl;
   if (schema && hasGradientInfoForSchema(*schema)) {
     return true;
   }
 
+  std::cerr << " LOOKING AT GRAD_OF FOR " << *n << std::endl;
   // linear blocks may appear as inputs to graph executors, but they are removed
   // before differentiation occurs
   if (n->kind() == prim::GradOf) {
@@ -93,6 +95,7 @@ bool isDifferentiable(const Node* n) {
         static_cast<bool (*)(const Node*)>(isDifferentiable));
   }
 
+  std::cerr << " LOOKING AT INPUTS FOR " << *n << std::endl;
   // formulas are only defined with floating point scalars,
   // so we fallback to autograd for other cases.
   for (const Value* input : n->inputs()) {

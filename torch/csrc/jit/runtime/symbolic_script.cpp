@@ -625,6 +625,14 @@ const std::vector<std::string> functions = {
 
             return torch.unbind(self, dim), backward
 
+        def unbind_copy(self,
+                   dim: int):
+            def backward(grad_outputs: List[Tensor]):
+                grad_self = torch.stack(grad_outputs, dim)
+                return grad_self, None
+
+            return torch.unbind_copy(self, dim), backward
+
         def cat(tensors: List[Tensor],
                 dim: int):
             size = len(tensors)
@@ -1577,6 +1585,8 @@ void loadModule(const CompilationUnit& module) {
     auto schema_string = overloadedSchemaString(actual_schema);
 
     schema_to_graphs[schema_string] = std::move(pair);
+
+    std::cerr << " ==load " << method->name() << " (" << schema_string << ")" << std::endl;
   }
 }
 
@@ -1598,6 +1608,7 @@ c10::optional<GradientPair> gradientInfoForSchema(
     return cache_it->second;
   } else {
     auto schema_str = canonicalSchemaString(schema);
+    std::cerr << " --> search for " << schema_str << std::endl;
     // For debugging AD change:
     // std::cout << "Looking for " << schema_str << std::endl;
     auto sym_script_it = schema_to_graphs.find(schema_str);
