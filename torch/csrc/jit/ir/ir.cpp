@@ -13,7 +13,9 @@
 #include <torch/csrc/jit/serialization/python_print.h>
 
 #include <algorithm>
+#include <ios>
 #include <iostream>
+#include <locale>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -889,6 +891,7 @@ Value* Value::setDebugName(const std::string& name) {
     // Verify that new name is not used and find next usable name in case
     // suffix is used.
     std::string replacement_name;
+    std::locale::global(std::locale(""));
     do {
       std::stringstream ss;
       ss << name_base << "." << suffix++;
