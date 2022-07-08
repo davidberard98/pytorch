@@ -862,6 +862,10 @@ void AliasDb::analyzeImpl(Node* node) {
     }
   }
 
+  if (node->kind() == aten::split) {
+    std::cerr << " !! here " << std::endl;
+  }
+
   // Use the formal-actual mapping to give aliases to the outputs
   for (const auto i : c10::irange(schema.returns().size())) {
     const auto actual = node->outputs().at(i);
