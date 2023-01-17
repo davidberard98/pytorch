@@ -192,6 +192,29 @@ class TensorVariable(VariableTracker):
         if name == "__class__":
             return TorchVariable(self.python_type(), **options)
 
+        # If we haven't found a special case, check whether this can be handled as a
+        # general tensor attribute, like (for tensor "x"), x.H, x.real, etc., which
+        # can be accessed as torch.Tensor.real.__get__(x).
+        if result is None:
+            from .builder import wrap_fx_proxy
+            try:
+                tensor_attr = getattr(torch.Tensor, name)
+                if str(getattr(type(tensor_attr), "__name__")) == "getset_descriptor":
+                    result = wrap_fx_proxy(
+                        tx,
+                        tx.output.create_proxy(
+                            "call_function",
+                            getattr(tensor_attr, "__get__"),
+                            (self.as_proxy(),),
+                            {},
+                        ),
+                        **options,
+                    )
+                    print(f"!! getset descriptor of {name} so we add a wrap_fx_proxy")
+            except AttributeError as e:
+                raise e
+                pass
+
         # Add a guard for type matching, these guards are checked before tensor guards
         # In some cases, a <tensor>.<attr> guard can be evaluated first, and break if
         # <tensor> is later changed to another type

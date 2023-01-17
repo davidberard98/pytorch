@@ -1755,6 +1755,9 @@ class InstructionTranslator(InstructionTranslatorBase):
             f"torchdynamo done tracing {self.f_code.co_name} (RETURN_VALUE)",
         )
         log.debug("RETURN_VALUE triggered compile")
+        for node in self.output.graph.nodes:
+            print(f" node {node.op} {node.target}")
+            print(f"  {node.format_node()}")
         self.output.compile_subgraph(self)
         self.output.add_output_instructions([create_instruction("RETURN_VALUE")])
 
