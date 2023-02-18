@@ -4,6 +4,7 @@ from typing import Dict, List
 import torch
 
 from .. import variables
+from ..allowed_functions import is_numpy
 from ..exc import unimplemented
 from ..utils import HAS_NUMPY, istype, np
 from .base import typestr, VariableTracker
@@ -15,6 +16,7 @@ class ConstantVariable(VariableTracker):
         assert not isinstance(value, torch.Tensor)
         assert not isinstance(value, torch.SymInt)
         assert not isinstance(value, torch.SymFloat)
+        assert not is_numpy(value)
 
         if HAS_NUMPY and isinstance(value, np.number):
             self.value = value.item()

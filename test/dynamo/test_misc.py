@@ -3349,6 +3349,30 @@ class MiscTests(torch._dynamo.test_case.TestCase):
         res = opt_fn()
         self.assertTrue(same(ref, res))
 
+    def test_builtin_add_numpy(self):
+        def fn():
+            x = np.array([1, 2, 3, 4, 5, 6], dtype=np.int64)
+            y = x + 2  # if this isn't a NumpyVariable, following line will fail
+            z = torch.from_numpy(y)
+            return z
+
+        ref = fn()
+        opt_fn = torch._dynamo.optimize("eager")(fn)
+        res = opt_fn()
+        self.assertTrue(same(ref, res))
+
+    def test_builtin_any_numpy(self):
+        def fn():
+            x = np.array([1, 2, 3, 4, 5, 6], dtype=np.int64)
+            y = any(x)  # takes a numpy arg but returns a non-numpy output
+            z = x.sin() if y else x.cos()
+            return z
+
+        ref = fn()
+        opt_fn = torch._dynamo.optimize("eager")(fn)
+        res = opt_fn()
+        self.assertTrue(same(ref, res))
+
     def test_autograd_function_equivalence(self):
         for i in range(1, 5):
             model = globals()[f"Module{i}"]()

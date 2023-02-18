@@ -11,7 +11,7 @@ import torch
 from torch import sym_float, sym_int
 
 from .. import config, variables
-from ..allowed_functions import is_allowed
+from ..allowed_functions import is_allowed, is_numpy
 from ..exc import unimplemented, Unsupported
 from ..guards import GuardBuilder
 from ..replay_record import DummyModule
@@ -574,14 +574,19 @@ class BuiltinVariable(VariableTracker):
 
         if has_constant_handler:
             args, kwargs = specialize_args_kwargs(tx, args, kwargs)
-            # constant fold
-            return variables.ConstantVariable(
-                self.as_python_constant()(
-                    *[x.as_python_constant() for x in args],
-                    **{k: v.as_python_constant() for k, v in kwargs.items()},
-                ),
-                **options,
+
+            # constant fold; this is a literal python value
+            value = self.as_python_constant()(
+                *[x.as_python_constant() for x in args],
+                **{k: v.as_python_constant() for k, v in kwargs.items()},
             )
+
+            # may need to wrap in a specialized type to handle correctly
+            if is_numpy(value):
+                variable_type = variables.NumpyVariable
+            else:
+                variable_type = variables.ConstantVariable
+            return variable_type(value, **options)
         return super().call_function(tx, args, kwargs)
 
     def _call_min_max(self, tx, *args):
