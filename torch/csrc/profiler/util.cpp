@@ -363,11 +363,14 @@ static constexpr auto kMulOp = "aten::mul";
 static constexpr auto kAddOp = "aten::add";
 static constexpr auto kBMMOp = "aten::bmm";
 static constexpr auto kBAddBMMOp = "aten::baddbmm";
+static constexpr auto kAsStridedOp = "aten::as_strided";
+static constexpr auto kViewOp = "aten::view";
 
 static constexpr auto kInputSize = "input_size";
 static constexpr auto kWeightSize = "weight_size";
 static constexpr auto kGroups = "groups";
 static constexpr auto kPadding = "padding";
+static constexpr auto kShape = "shape";
 static constexpr auto kStride = "stride";
 static constexpr auto kDilation = "dilation";
 static constexpr auto kMatSize = "mat_size";
@@ -493,6 +496,14 @@ std::unordered_map<std::string, c10::IValue> saveExtraArgs(
     at::Tensor right = inputs[2].toTensor();
     map[kMat1Size] = at::IValue(left.sizes());
     map[kMat2Size] = at::IValue(right.sizes());
+  } else if (fname == kAsStridedOp) {
+    map[kShape] = inputs[1];
+    map[kStride] = inputs[2];
+    if (inputs.size() >= 3) {
+      map[kOffsets] = inputs[3];
+    } else {
+      map[kOffsets] = at::IValue(0); // None
+    }
   }
 
   return map;
