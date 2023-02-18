@@ -520,6 +520,9 @@ class BuiltinVariable(VariableTracker):
             except NotImplementedError:
                 unimplemented(f"partial tensor op: {self} {args} {kwargs}")
 
+        if any(is_numpy(x) for x in itertools.chain(args, kwargs.values())):
+            unimplemented("numpy")
+
         # Handle cases like int(torch.seed())
         # Also handle sym_float to sym_int cases
         if self.fn in (int, float) and isinstance(args[0], SymNodeVariable):
@@ -574,19 +577,14 @@ class BuiltinVariable(VariableTracker):
 
         if has_constant_handler:
             args, kwargs = specialize_args_kwargs(tx, args, kwargs)
-
-            # constant fold; this is a literal python value
-            value = self.as_python_constant()(
-                *[x.as_python_constant() for x in args],
-                **{k: v.as_python_constant() for k, v in kwargs.items()},
+            # constant fold
+            return variables.ConstantVariable(
+                self.as_python_constant()(
+                    *[x.as_python_constant() for x in args],
+                    **{k: v.as_python_constant() for k, v in kwargs.items()},
+                ),
+                **options
             )
-
-            # may need to wrap in a specialized type to handle correctly
-            if is_numpy(value):
-                variable_type = variables.NumpyVariable
-            else:
-                variable_type = variables.ConstantVariable
-            return variable_type(value, **options)
         return super().call_function(tx, args, kwargs)
 
     def _call_min_max(self, tx, *args):
