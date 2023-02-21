@@ -369,6 +369,7 @@ static constexpr auto kViewOp = "aten::view";
 static constexpr auto kInputSize = "input_size";
 static constexpr auto kWeightSize = "weight_size";
 static constexpr auto kGroups = "groups";
+static constexpr auto kOffset = "offset";
 static constexpr auto kPadding = "padding";
 static constexpr auto kShape = "shape";
 static constexpr auto kStride = "stride";
@@ -500,9 +501,9 @@ std::unordered_map<std::string, c10::IValue> saveExtraArgs(
     map[kShape] = inputs[1];
     map[kStride] = inputs[2];
     if (inputs.size() >= 3) {
-      map[kOffsets] = inputs[3];
+      map[kOffset] = inputs[3];
     } else {
-      map[kOffsets] = at::IValue(0); // None
+      map[kOffset] = at::IValue(0); // None
     }
   }
 
