@@ -69,6 +69,7 @@ using torch::profiler::impl::op_input_t;
 using torch::profiler::impl::ProfilerStateBase;
 using torch::profiler::impl::PyExtraFieldsBase;
 using torch::profiler::impl::Result;
+using torch::profiler::impl::ShapeInfo;
 using torch::profiler::impl::shapesToStr;
 using torch::profiler::impl::stacksToStr;
 using torch::profiler::impl::TensorMetadata;
@@ -86,6 +87,10 @@ auto shapesAndDtypes(const std::vector<op_input_t>& inputs) {
             [&](const std::vector<TensorMetadata>&) {
               shapes.emplace_back();
               dtypes.emplace_back("TensorList");
+            },
+            [&](const ShapeInfo& info) {
+              shapes.emplace_back(*info.sizes_);
+              dtypes.emplace_back("[ShapeInfo]");
             },
             [&](const c10::IValue&) {
               shapes.emplace_back();

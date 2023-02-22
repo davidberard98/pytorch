@@ -85,9 +85,20 @@ struct TORCH_API TensorMetadata : public RawTensorMetadataBase {
   c10::optional<AllocationID> allocation_id_;
 };
 
+// Used during post processing.
+struct TORCH_API ShapeInfo {
+  ShapeInfo(
+      c10::optional<std::vector<int64_t>> sizes = c10::nullopt,
+      c10::optional<std::vector<int64_t>> strides = c10::nullopt);
+
+  c10::optional<std::vector<int64_t>> sizes_;
+  c10::optional<std::vector<int64_t>> strides_;
+};
+
 using op_input_t = c10::variant<
     TensorMetadata,
     std::vector<TensorMetadata>,
+    ShapeInfo,
     c10::IValue,
     c10::nullopt_t>;
 
@@ -436,7 +447,8 @@ constexpr int IO_ENCODER_DEFAULT_BLOCK_SIZE = 1024;
 // Those vectors can be created during post-processing.
 class InputOutputEncoder final {
  public:
-  void push(c10::ArrayRef<const c10::IValue> values);
+  // void push(c10::ArrayRef<const c10::IValue> values);
+  void push(const at::RecordFunction& fn);
 
   // Used during post-processing to create vectors for shapes and dtype.
   auto getNextShapesAndDtypes();
@@ -449,11 +461,13 @@ class InputOutputEncoder final {
     UndefinedTensor,
     TensorListBegin, // TODO: generalize to other lists.
     Scalar,
+    IntList,
     Other,
     TERMINATOR
   };
 
   void push(const at::Tensor& t);
+  void push_int_list(const at::IValue& value);
 
   AppendOnlyList<Tag, IO_ENCODER_DEFAULT_BLOCK_SIZE> tags_;
   AppendOnlyList<RawTensorMetadata, IO_ENCODER_DEFAULT_BLOCK_SIZE>

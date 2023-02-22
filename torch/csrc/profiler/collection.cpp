@@ -62,6 +62,11 @@ TensorMetadata::TensorMetadata(
   SOFT_ASSERT(r.weak_self_.has_value());
 }
 
+ShapeInfo::ShapeInfo(
+    c10::optional<std::vector<int64_t>> sizes,
+    c10::optional<std::vector<int64_t>> strides)
+    : sizes_(sizes), strides_(strides) {}
+
 // ============================================================================
 // == PyTorch Ops =============================================================
 // ============================================================================
@@ -69,7 +74,8 @@ TensorMetadata::TensorMetadata(
 // ----------------------------
 // |  Input / Output encoder  |
 // ----------------------------
-void InputOutputEncoder::push(c10::ArrayRef<const c10::IValue> values) {
+void InputOutputEncoder::push(const at::RecordFunction& fn) {
+  auto values = fn.inputs();
   for (const auto& value : values) {
     if (value.isTensor()) {
       push(value.toTensor());
@@ -86,11 +92,26 @@ void InputOutputEncoder::push(c10::ArrayRef<const c10::IValue> values) {
         push(t);
       }
       tags_.emplace_back(Tag::TERMINATOR);
+    } else if (std::string(fn.name()) == "aten::as_strided") {
+      TORCH_INTERNAL_ASSERT(value.type()->kind() == c10::TypeKind::ListType);
+      TORCH_INTERNAL_ASSERT(
+          value.type()->expectRef<c10::ListType>().getElementType()->kind() ==
+          c10::TypeKind::IntType);
+      push_int_list(value);
     } else {
       tags_.emplace_back(Tag::Other);
     }
   }
   tags_.emplace_back(Tag::TERMINATOR);
+}
+
+void InputOutputEncoder::push_int_list(const at::IValue& ivalue) {
+  auto intList = ivalue.toIntList();
+  tensor_sizes_strides_.emplace_back(intList.size());
+  for (const auto& elem : intList) {
+    tensor_sizes_strides_.emplace_back(elem);
+  }
+  tags_.emplace_back(Tag::IntList);
 }
 
 void InputOutputEncoder::push(const at::Tensor& t) {
@@ -129,6 +150,16 @@ auto InputOutputEncoder::getNextShapesAndDtypes() {
       return {raw_metadata, sizes, strides};
     };
 
+    auto decode_shape = [&]() -> ShapeInfo {
+      auto n = *tensor_size_strides_it++;
+      std::vector<int64_t> sizes;
+      sizes.reserve(n);
+      for (const auto _ : c10::irange(n)) {
+        sizes.push_back(*tensor_size_strides_it++);
+      }
+      return ShapeInfo(sizes, c10::nullopt);
+    };
+
     std::vector<op_input_t> out;
     bool terminate = false;
     while (!terminate && tag_it != tags_.end()) {
@@ -148,6 +179,10 @@ auto InputOutputEncoder::getNextShapesAndDtypes() {
 
         case Tag::Scalar:
           out.emplace_back(*ivals_it++);
+          break;
+
+        case Tag::IntList:
+          out.emplace_back(decode_shape());
           break;
 
         case Tag::UndefinedTensor:
@@ -222,7 +257,7 @@ std::unique_ptr<KinetoObserverContext> ThreadLocalSubqueue::begin_op(
       fn.debugHandle(),
       fn.name());
   if (config_.report_input_shapes) {
-    torch_ops_.inputs_outputs_.push(fn.inputs());
+    torch_ops_.inputs_outputs_.push(fn);
   }
   if (fn.scope() == at::RecordScope::USER_SCOPE) {
     torch::profiler::impl::kineto::pushUserCorrelationId(corr_id);
