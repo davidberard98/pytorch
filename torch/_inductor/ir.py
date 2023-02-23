@@ -2382,7 +2382,7 @@ class InputsKernel(Buffer):
             if isinstance(x, StorageBox):
                 x = x.data
             if isinstance(x, BaseView) and not isinstance(x, ReinterpretView):
-                x = ExternKernel.realize_input(x)
+                (x,) = InputsKernel.unwrap_storage([ExternKernel.realize_input(x)])
             assert isinstance(x, (Buffer, ReinterpretView)), x
             inputs_new.append(x)
         return inputs_new

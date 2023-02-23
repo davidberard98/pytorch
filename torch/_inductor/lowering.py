@@ -568,9 +568,13 @@ def trunc(x):
 def expand(x, sizes):
     (x,) = promote_constants([x])
     if isinstance(x, ir.BaseConstant):
-        return ExpandView.create(x, tuple(sizes))
+        return TensorBox(ExpandView.create(x, tuple(sizes)))
+    if isinstance(x, ExpandView):
+        print(f" -> expand input {x} is an ExpandView")
+        x = TensorBox(x)
     assert isinstance(x, TensorBox)
     assert isinstance(sizes, (list, tuple))
+    print(f" comparing {tuple(x.get_size())} vs {tuple(sizes)} :: {tuple(x.get_size()) == tuple(sizes)}")
     if tuple(x.get_size()) == tuple(sizes):
         return x
 

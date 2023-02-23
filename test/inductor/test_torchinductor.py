@@ -1601,6 +1601,18 @@ class CommonTemplate:
             ),
         )
 
+    def test_addmm_constant(self):
+        def fn(a, b):
+            return (torch.mm(a + 2, b + 3) + 4,)
+
+        self.common(
+            fn,
+            (
+                torch.randn(8, 8),
+                torch.randn(8, 8),
+            ),
+        )
+
     def test_linear1(self):
         mod = torch.nn.Sequential(
             torch.nn.Linear(8, 16),

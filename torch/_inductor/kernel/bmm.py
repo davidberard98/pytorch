@@ -1,6 +1,6 @@
 import torch
 
-from ..lowering import register_lowering
+from ..lowering import promote_constants, register_lowering
 from ..select_algorithm import (
     autotune_select_algorithm,
     ExternKernelChoice,
@@ -107,6 +107,7 @@ def tuned_bmm(mat1, mat2, *, layout=None):
 # Don't register this since it is slower than decomposing it
 # @register_lowering(aten.baddbmm)
 def tuned_baddbmm(inp, mat1, mat2, *, alpha=1, beta=1, layout=None):
+    (inp, mat1, mat2) = promote_constants([inp, mat1, mat2])
     m, n, k, layout, mat1, mat2, inp = mm_args(mat1, mat2, inp, layout=layout)
 
     # options to tune from
