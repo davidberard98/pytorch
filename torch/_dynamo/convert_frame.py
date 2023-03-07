@@ -360,6 +360,14 @@ def _compile(
 
         assert output is not None
         assert output.guards is not None
+
+        if config.output_code:
+            guard_str = "GUARDS:\n"
+            guard_str += "\n".join(
+                [f" - {str(guard)}" for guard in sorted(output.guards)]
+            )
+            log.info(guard_str)
+
         CleanupManager.instance[out_code] = output.cleanups
         check_fn = CheckFunctionManager(
             output,
@@ -369,13 +377,6 @@ def _compile(
         )
 
         guarded_code = GuardedCode(out_code, check_fn.check_fn)
-
-        if config.output_code:
-            guard_str = "GUARDS:\n"
-            guard_str += "\n".join(
-                [f" - {str(guard)}" for guard in sorted(output.guards)]
-            )
-            log.info(guard_str)
 
         if hooks.guard_export_fn is not None:
             hooks.guard_export_fn(output.guards)
