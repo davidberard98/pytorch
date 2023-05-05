@@ -126,6 +126,10 @@ void popCorrelationId();
 void popUserCorrelationId();
 void recordThreadInfo();
 
+int highestKinetoLogLevel();
+int getKinetoLogLevel();
+void setKinetoLogLevel(int level);
+
 void logInvariantViolation(
     const std::string& assertion,
     const std::string& error,

@@ -1,4 +1,5 @@
 from collections import deque
+from contextlib import contextmanager
 from dataclasses import dataclass
 import functools
 import re
@@ -352,6 +353,22 @@ def source_code_location(event):
 # TODO(dberard) - deprecate / remove workaround for CUDA >= 12, when
 # we stop supporting older CUDA versions.
 def _init_for_cuda_graphs():
+    from torch._C._profiler import (
+        _highest_kineto_log_level,
+        _get_kineto_log_level,
+        _set_kineto_log_level,
+    )
     from torch.autograd.profiler import profile
-    with profile():
-        pass
+
+    @contextmanager
+    def kineto_log_level_ctx(level):
+        old_level = _get_kineto_log_level()
+        _set_kineto_log_level(level):
+        try:
+            yield
+        finally:
+            _set_kineto_log_level(old_level)
+
+    with kineto_log_level_ctx(_highest_kineto_log_level()):
+        with profile():
+            pass

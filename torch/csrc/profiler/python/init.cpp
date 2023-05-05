@@ -294,6 +294,15 @@ void initPythonBindings(PyObject* module) {
   m.def(
       "_disable_execution_graph_observer",
       &torch::profiler::impl::disableExecutionGraphObserver);
+  m.def(
+      "_highest_kineto_log_level",
+      &torch::profiler::impl::kineto::highestKinetoLogLevel);
+  m.def(
+      "_get_kineto_log_level",
+      &torch::profiler::impl::kineto::getKinetoLogLevel);
+  m.def(
+      "_set_kineto_log_level",
+      &torch::profiler::impl::kineto::setKinetoLogLevel);
 
   py::class_<CapturedTraceback, std::shared_ptr<CapturedTraceback>>(
       m, "CapturedTraceback");

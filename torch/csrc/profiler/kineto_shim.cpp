@@ -295,6 +295,28 @@ void recordThreadInfo() {
 #endif // USE_KINETO
 }
 
+int highestKinetoLogLevel() {
+#ifdef USE_KINETO
+  return libkineto::ENUM_COUNT;
+#else
+  return 0;
+#endif // USE_KINETO
+}
+
+int getKinetoLogLevel() {
+#ifdef USE_KINETO
+  return libkineto::getLogSeverityLevel();
+#else
+  return 0;
+#endif // USE_KINETO
+}
+
+void setKinetoLogLevel(int level) {
+#ifdef USE_KINETO
+  return libkineto::setLogSeverityLevel(level);
+#endif // USE_KINETO
+}
+
 void logInvariantViolation(
     const std::string& assertion,
     const std::string& error,
