@@ -791,6 +791,8 @@ void passEventsToKineto(
     }
   }
 
+  generateForwardBackwardLinks(cpu_trace.get(), results);
+
   // Kineto adds the events that it collected.
   cpu_trace.transferCpuTrace(end_time_us);
 }
