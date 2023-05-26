@@ -681,7 +681,7 @@ void generateForwardBackwardLinkV2(
         tidSeq2activity) {
   const ExtraFields<EventType::TorchOp>& extra_fields =
       c10::get<ExtraFields<EventType::TorchOp>>(profiler_result.extra_fields_);
-  if (extra_fields.forward_tid_ > 0) {
+  if (extra_fields.forward_tid_ > 0 && extra_fields.sequence_number_ >= 0) {
     std::cerr << " !(bwd) forward_tid_ " << extra_fields.end_time_ns_ << " | " << extra_fields.forward_tid_ << " , " << extra_fields.sequence_number_ << std::endl;
     // act is backward op.
     uint64_t key = getForwardThreadKey(
@@ -694,7 +694,7 @@ void generateForwardBackwardLinkV2(
       activity.flow.type = fwd->flow.type = libkineto::kLinkFwdBwd;
       ++fwd_bwd_link_id;
     }
-  } else if (profiler_result.start_tid_ != 0) {
+  } else if (profiler_result.start_tid_ != 0 && extra_fields.sequence_number_ >= 0) {
     std::cerr << " !(fwd) start_tid_ " << extra_fields.end_time_ns_ << " | " << profiler_result.start_tid_ << " , " << extra_fields.sequence_number_ << std::endl;
     uint64_t key = getForwardThreadKey(
         profiler_result.start_tid_, extra_fields.sequence_number_);
