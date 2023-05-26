@@ -682,6 +682,7 @@ void generateForwardBackwardLinkV2(
   const ExtraFields<EventType::TorchOp>& extra_fields =
       c10::get<ExtraFields<EventType::TorchOp>>(profiler_result.extra_fields_);
   if (extra_fields.forward_tid_ > 0) {
+    std::cerr << " !(bwd) forward_tid_ " << extra_fields.end_time_ns_ << " | " << extra_fields.forward_tid_ << " , " << extra_fields.sequence_number_ << std::endl;
     // act is backward op.
     uint64_t key = getForwardThreadKey(
         extra_fields.forward_tid_, extra_fields.sequence_number_);
@@ -694,6 +695,7 @@ void generateForwardBackwardLinkV2(
       ++fwd_bwd_link_id;
     }
   } else if (profiler_result.start_tid_ != 0) {
+    std::cerr << " !(fwd) start_tid_ " << extra_fields.end_time_ns_ << " | " << profiler_result.start_tid_ << " , " << extra_fields.sequence_number_ << std::endl;
     uint64_t key = getForwardThreadKey(
         profiler_result.start_tid_, extra_fields.sequence_number_);
     // Assumption: Among all ops with same sequence number,
@@ -738,6 +740,11 @@ void generateForwardBackwardLinks(
 
   uint64_t fwd_bwd_link_id = 1;
 
+  using result_activity_t =
+      std::pair<Result*, libkineto::GenericTraceActivity*>;
+
+  std::vector<result_activity_t> torch_events;
+
   for (const auto idx : c10::irange(cpu_trace->activities.size())) {
     auto& profiler_result = results[idx];
     auto& activity = cpu_trace->activities[idx];
@@ -747,9 +754,26 @@ void generateForwardBackwardLinks(
 
     profiler_result->visit_if_base<ExtraFields<EventType::TorchOp>>(
         [&](const auto&) {
-          generateForwardBackwardLinkV2(
-              *profiler_result, fwd_bwd_link_id, *activity, tidSeq2activity);
+          torch_events.emplace_back(profiler_result.get(), activity.get());
         });
+  }
+
+  std::sort(
+      torch_events.begin(),
+      torch_events.end(),
+      [](const result_activity_t& left, const result_activity_t& right) {
+        auto left_end_time =
+            c10::get<ExtraFields<EventType::TorchOp>>(left.first->extra_fields_)
+                .end_time_ns_;
+        auto right_end_time = c10::get<ExtraFields<EventType::TorchOp>>(
+                                  right.first->extra_fields_)
+                                  .end_time_ns_;
+        return left_end_time < right_end_time;
+      });
+
+  for (auto& [profiler_result, activity] : torch_events) {
+    generateForwardBackwardLinkV2(
+        *profiler_result, fwd_bwd_link_id, *activity, tidSeq2activity);
   }
 }
 #endif
