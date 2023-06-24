@@ -31,3 +31,34 @@ class TestModules(JitTestCase):
                 self.x = 0
 
         self.checkModule(Net(), (torch.randn(5),))
+
+    def test_script_inherited_modules_with_annotations(self):
+        """
+        Even though inheritence isn't officially supported... people have used it
+        in cases where it didn't error out in the past. 3.10 had a regression
+        due to how inspect.get_annotation was being used, this checks the situation
+        that had regressed.
+        """
+
+        class Parent(torch.nn.Module):
+            x: List[int]
+
+            def __init__(self):
+                super().__init__()
+                self.x = [1, 2]
+
+        class Child(Parent):
+            y: List[int]
+
+            def __init__(self):
+                super().__init__()
+                self.y = [3, 4]
+
+            def forward(self, val):
+                for v, w in zip(self.x, self.y):
+                    val += v * w
+
+                return val
+
+        mod = Child()
+        self.checkModule(mod, (torch.rand(4, 4)))
