@@ -271,6 +271,7 @@ if RUN_CUDA:
         ),
         BaseTest("test_fft_real_input"),
         BaseTest("test_fft_real_input_real_output"),
+        BaseTest("test_like_rands"),
     ]:
         make_test_case(item.name, item.device, item.tests)
 

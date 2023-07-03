@@ -2877,6 +2877,7 @@ class ExternKernel(InputsKernel):
     def codegen_kwargs(self):
         kwargs = []
         if self.kwargs:
+            breakpoint()
             if V.graph.cpp_wrapper:
                 # TODO: use native_functions.yaml as the ground truth
                 assert (
@@ -3214,7 +3215,7 @@ class FallbackKernel(ExternKernelAlloc):
     def __init__(
         self,
         layout,
-        kernel,
+        kernel: Union[torch._ops.OpOverload, torch._ops.OpOverloadPacket],
         tensor_args,
         nontensor_args,
         unflatten_args,
@@ -3226,6 +3227,7 @@ class FallbackKernel(ExternKernelAlloc):
             tuple(nontensor_args),
         )
         self.use_cpp_op_schema = False
+        self.op_kernel = kernel
 
         op_overload_packet = (
             kernel._overloadpacket
@@ -3268,9 +3270,10 @@ class FallbackKernel(ExternKernelAlloc):
         self.kwargs = {} if kwargs is None else kwargs
         V.graph.warn_fallback(self.kernel)
 
-    def set_cpp_kernel(self, kernel):
+    def set_cpp_kernel(self, kernel, use_cpp_op_schema):
         from .codegen.wrapper import get_cpp_op_schema
 
+        self.use_cpp_op_schema = True
         assert (
             not kernel._schema.is_mutable
         ), f"mutable {kernel.__name__} is not supported with cpp_wrapper"
@@ -3295,9 +3298,12 @@ class FallbackKernel(ExternKernelAlloc):
         )
 
         self.cpp_op_schema = get_cpp_op_schema(kernel)
+
+        """
         self.ordered_kwargs_for_cpp_kernel = [
-            x.name for x in kernel._schema.arguments if x.kwarg_only
+            x.name for x in op_overload._schema.arguments if x.kwarg_only
         ]
+        """
 
     def codegen_args(self):
         @dataclasses.dataclass
