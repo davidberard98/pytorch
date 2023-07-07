@@ -51,6 +51,7 @@ class SizeVarAllocator:
             if result is None:
                 result = self._simplify_with_ranges(expr, var_ranges)
                 cache[key] = result
+            print(f":DBERARD simplify_with_ranges: {expr} -> {result}")
             return result
 
         return simplify_with_ranges
@@ -556,5 +557,14 @@ class SimplifyIndexing(V.WrapperHandler):  # type: ignore[name-defined]
             name, dtype, src_dtype, reduction_type, self._simplify(index), value
         )
 
-    def index_expr(self, index, dtype):
-        return self._inner.index_expr(self._simplify(index), dtype)
+    def index_expr(self, index, dtype, scalar=False):
+        return self._inner.index_expr(self._simplify(index), dtype, scalar=scalar)
+
+    def bucketize(self, values, offsets_name, offsets_size, indexing_dtype, right):
+        return self._inner.bucketize(
+            values,
+            offsets_name,
+            self._simplify(offsets_size),
+            indexing_dtype,
+            right,
+        )

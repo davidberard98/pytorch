@@ -237,9 +237,9 @@ class _RecordLoadStoreInner(V.MockHandler):
     ) -> str:
         return self.store(name, index, f"reduce_{reduction_type})({value})")
 
-    def index_expr(self, index: sympy.Expr, dtype) -> str:
+    def index_expr(self, index: sympy.Expr, dtype, scalar=False) -> str:
         self._index_exprs.add(IndexExprDep(*self.canonicalize(index)))
-        return f"index_expr({sympy_str(index)}, {dtype})"
+        return f"index_expr({sympy_str(index)}, {dtype}, {scalar})"
 
 
 class _OpCounter:

@@ -225,8 +225,8 @@ class TritonOverrides(OpOverrides):
         return f"tl.math.sin({x})"
 
     @staticmethod
-    def index_expr(expr, dtype):
-        index_str, mask_vars, mask, expand_str = V.kernel.indexing(expr)
+    def index_expr(expr, dtype, scalar=False):
+        index_str, mask_vars, mask, expand_str = V.kernel.indexing(expr, force_scalar=scalar)
         var = V.kernel.cse.generate(V.kernel.compute, index_str)
         var.mask_vars = mask_vars
         return var
@@ -974,6 +974,9 @@ class TritonKernel(Kernel):
         new_index = sympy_subs(index, dict(zip(index_vars, reindex(new_index_vars))))
         return new_index
 
+    def index_to_str(self, index: sympy.Expr) -> str:
+        return texpr(self.rename_indexing(self.codegen_indexing(index)))
+
     def indexing(
         self,
         index: sympy.Expr,
@@ -981,6 +984,7 @@ class TritonKernel(Kernel):
         copy_shape=None,
         dense_indexing=False,
         override_mask=None,
+        force_scalar=False,
     ):
         """
         Compute the index and mask to pass to tl.load() or tl.store()
@@ -1008,7 +1012,7 @@ class TritonKernel(Kernel):
                     index = sympy_subs(index, replacements)
 
         index_vars = index.free_symbols
-        index_str = texpr(self.rename_indexing(self.codegen_indexing(index)))
+        index_str = self.index_to_str(index)
 
         mask_vars: Set[str] = set()
         for var in index_vars:
@@ -1048,16 +1052,19 @@ class TritonKernel(Kernel):
 
         if isinstance(index, sympy.Integer):
             expand_str = f"{copy_shape}.shape" if copy_shape else self.dense_size_str()
-            index_str = f"tl.full({expand_str}, {index_str}, tl.int32)"
+            if not force_scalar:
+                index_str = f"tl.full({expand_str}, {index_str}, tl.int32)"
             return index_str, set(), "None", expand_str
 
-        if need_dense and not have_dense:
-            expand_str = f"{copy_shape}.shape" if copy_shape else self.dense_size_str()
-            index_str = f"tl.broadcast_to({index_str}, {expand_str})"
-            mask_vars = dense_mask_vars
-        elif not have_loop_vars and copy_shape:
-            index_str = f"tl.broadcast_to({index_str}, {copy_shape}.shape)"
-            mask_vars = dense_mask_vars
+        if not force_scalar:
+            if need_dense and not have_dense:
+                expand_str = f"{copy_shape}.shape" if copy_shape else self.dense_size_str()
+                breakpoint()
+                index_str = f"tl.broadcast_to({index_str}, {expand_str})"
+                mask_vars = dense_mask_vars
+            elif not have_loop_vars and copy_shape:
+                index_str = f"tl.broadcast_to({index_str}, {copy_shape}.shape)"
+                mask_vars = dense_mask_vars
 
         if override_mask:
             mask_vars = {override_mask}
@@ -1187,9 +1194,7 @@ class TritonKernel(Kernel):
                 )
 
             self.indirect_max_sizes_expr[map_key] = size
-            self.indirect_max_sizes_printed[map_key] = texpr(
-                self.rename_indexing(self.codegen_indexing(size))
-            )
+            self.indirect_max_sizes_printed[map_key] = index_to_str(size)
 
         return sympy_symbol(str(var))
 
@@ -1197,6 +1202,8 @@ class TritonKernel(Kernel):
         var = self.args.input(name)
         indirect_indexing = self.is_indirect_indexing(index)
         original_index = index
+        print(index)
+        breakpoint()
         index, mask_vars, mask, expand_str = self.indexing(index)
 
         # Keep the variable in cache if were going to reuse it. Equiv., if any of the following hold
@@ -1295,7 +1302,7 @@ class TritonKernel(Kernel):
         self,
         values: CSEVariable,
         offsets_name: str,
-        offsets_size,
+        offsets_size: sympy.Expr,
         indexing_dtype: torch.dtype,
         right: bool,
     ):
@@ -1305,6 +1312,7 @@ class TritonKernel(Kernel):
 
         offsets_ptr = self.args.input(offsets_name)
         block_size = self.dense_size_str()
+        offsets_size_str = self.index_to_str(offsets_size)
 
         if indexing_dtype == torch.int32:
             triton_dtype = "tl.int32"
@@ -1317,7 +1325,7 @@ class TritonKernel(Kernel):
 
         result = self.cse.generate(
             self.compute,
-            f"triton_helpers.bucketize_binary_search({values}, {offsets_ptr}, {triton_dtype}, {right}, {offsets_size}, {block_size})",  # noqa: B950 line too long
+            f"triton_helpers.bucketize_binary_search({values}, {offsets_ptr}, {triton_dtype}, {right}, {offsets_size_str}, {block_size})",  # noqa: B950 line too long
         )
 
         return result

@@ -730,7 +730,8 @@ class CppVecOverrides(OpOverrides):
         return f"{type}::blendv({other_code}, {var}(), {float_mask})"
 
     @staticmethod
-    def index_expr(expr, dtype):
+    def index_expr(expr, dtype, scalar=False):
+        # TODO handle
         assert dtype == torch.int64
         opt_ctx: OptimizationContext = get_current_node_opt_ctx()
         assert opt_ctx
@@ -983,7 +984,8 @@ class CppOverrides(OpOverrides):
         return ops.to_dtype(repr(val), dtype)
 
     @staticmethod
-    def index_expr(expr, dtype):
+    def index_expr(expr, dtype, scalar=False):
+        # TODO: handle scalar
         return ops.to_dtype(cexpr(V.kernel.rename_indexing(expr)), dtype)
 
     @staticmethod
@@ -2002,7 +2004,8 @@ class CppVecKernelChecker(CppVecKernel):
                     return val
 
             @staticmethod
-            def index_expr(expr, dtype):
+            def index_expr(expr, dtype, scalar=False):
+                # TODO: handle scalar
                 assert len(self.ranges) == len(self.itervars)
                 if not len(self.ranges) or not all(
                     not isinstance(range, sympy.Expr) or sympy.simplify(range).is_number

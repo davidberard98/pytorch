@@ -4473,11 +4473,22 @@ class LoopBodyBlock:
                     name, dtype, src_dtype, reduction_type, index, value
                 )
 
-            def index_expr(self, index, dtype):
+            def index_expr(self, index, dtype, scalar=False):
                 if isinstance(index, (int, sympy.Integer)):
                     return self._inner.constant(int(index), dtype)
                 index = add_index(index, "other")
-                return self._inner.index_expr(index, dtype)
+                return self._inner.index_expr(index, dtype, scalar)
+
+            def bucketize(self, values, offsets_name, offsets_size, indexing_dtype, right):
+                offsets_size = add_index(offsets_size, "other")
+                return self._inner.bucketize(
+                    values,
+                    offsets_name,
+                    offsets_size,
+                    indexing_dtype,
+                    right,
+                )
+
 
             @staticmethod
             def masked(mask_proxy, masked_body: Callable[..., Any], other_proxy):

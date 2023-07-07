@@ -61,7 +61,7 @@ class SymPyOps:
         return TypedExpr(expr, dtype)
 
     @staticmethod
-    def index_expr(value, dtype):
+    def index_expr(value, dtype, scalar=False):
         if isinstance(value, int):
             value = sympy.Integer(value)
         return TypedExpr(value, dtype)
