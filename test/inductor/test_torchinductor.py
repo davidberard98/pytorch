@@ -315,6 +315,8 @@ def check_model(
         )
         correct = tree_unflatten(correct_flat, correct_spec)
 
+    print(f"...INDUCTOR.CONFIG... {torch._inductor.config.fallback_random}")
+
     if assert_equal:
         self.assertEqual(
             actual,

@@ -4,6 +4,7 @@ import os
 import sys
 import unittest
 from collections import defaultdict
+from contextlib import ExitStack
 from enum import Enum
 from functools import partial
 from unittest.mock import patch
@@ -212,19 +213,12 @@ inductor_expected_failures_single_sample["cpu"] = {
     ("normal", "number_mean"): {f16, f32, f64},
     "polar": {f32, f64},
     "quantile": {f32, f64},
-    "rand_like": {f16, f32, f64},
-    "randint_like": {f16, f32, f64, i32, i64},
-    "randint": {f16, f32, f64, i32, i64},
-    "randn_like": {f16, f32, f64},
-    "repeat_interleave": {b8, f16, f32, f64, i32, i64},
+    "repeat_interleave": {b8, f16, f32, f64, i32, i64},  # data-dependent output shape
     ("scatter_reduce", "prod"): {f16, f32, f64},
     ("_segment_reduce", "lengths"): {f16, f32, f64},
     "sparse.sampled_addmm": {f32, f64},
     ("sparse.mm", "reduce"): {bf16, f32, f64},
     "stft": {f32, f64},
-    "svd": {f32, f64},
-    "svd_lowrank": {f32, f64},
-    "pca_lowrank": {f32, f64},
     "tensor_split": {b8, f16, f32, f64, i32, i64},
     "to_sparse": {f32, f64},
     # AssertionError: Tensor-likes are not close!
@@ -297,11 +291,7 @@ inductor_expected_failures_single_sample["cuda"] = {
     "normal": {f16, f32, f64},
     ("normal", "number_mean"): {f16, f32, f64},
     "polar": {f32, f64},
-    "rand_like": {f16, f32, f64},
-    "randint_like": {f16, f32, f64, i32, i64},
-    "randint": {f16, f32, f64, i32, i64},
-    "randn_like": {f16, f32, f64},
-    "repeat_interleave": {b8, f16, f32, f64, i32, i64},
+    "repeat_interleave": {b8, f16, f32, f64, i32, i64},  # data-dependent output shape
     ("round", "decimals_3"): {f16},
     ("scatter_reduce", "prod"): {f16, f32, f64},
     ("_segment_reduce", "lengths"): {f16, f32, f64},
@@ -319,9 +309,6 @@ inductor_expected_failures_single_sample["cuda"] = {
     "uniform": {f16, f32, f64},
     # AssertionError: Tensor-likes are not close!
     "nn.functional.triplet_margin_loss": {f16},
-    "pca_lowrank": {f32, f64},
-    "svd_lowrank": {f32, f64},
-    "svd": {f32, f64},
     # AssertionError: Scalars are not close!
     "nn.functional.soft_margin_loss": {f16},
     "fft.fft": {b8, f16, f32, f64, i32, i64},
@@ -445,7 +432,6 @@ inductor_override_kwargs = {
     "new_empty": {"assert_equal": False},
     "empty_strided": {"assert_equal": False},
     "new_empty_strided": {"assert_equal": False},
-    "randn": {"assert_equal": False},
     ("masked.softmin", "cuda", f16): {"atol": 1e-4, "rtol": 0.01},
     ("nn.functional.tanhshrink", "cuda", f16): {"atol": 3e-4, "rtol": 0.001},
     ("nn.functional.softmin", "cuda", f16): {"atol": 1e-4, "rtol": 0.01},
@@ -459,6 +445,18 @@ inductor_override_kwargs = {
     "linalg.solve_triangular": {"check_gradient": False},
     "linalg.lu_factor": {"check_gradient": False},
     "linalg.lu_factor_ex": {"check_gradient": False},
+}
+
+# key can be either op_name, or (op_name, deivce_type), or (op_name, device_type, dtype)
+inductor_config_overrides = {
+    "randn": {"fallback_random": True},
+    "rand_like": {"fallback_random": True},
+    "randint_like": {"fallback_random": True},
+    "randint": {"fallback_random": True},
+    "randn_like": {"fallback_random": True},
+    "cauchy": {"fallback_random": True},
+    "exponential": {"fallback_random": True},
+    "geometric": {"fallback_random": True},
 }
 
 # Always test with all sample for following ops
@@ -545,13 +543,19 @@ class TestInductorOpInfo(TestCase):
         else:
             test_expect = ExpectedTestResult.SUCCESS
 
-        overridden_kwargs = {}
-        if op_name in inductor_override_kwargs:
-            overridden_kwargs = inductor_override_kwargs[op_name]
-        elif (op_name, device_type) in inductor_override_kwargs:
-            overridden_kwargs = inductor_override_kwargs[(op_name, device_type)]
-        elif (op_name, device_type, dtype) in inductor_override_kwargs:
-            overridden_kwargs = inductor_override_kwargs[(op_name, device_type, dtype)]
+        def lookup_overrides(override_table):
+            nonlocal op_name, device_type, dtype
+            result_kwargs = {}
+            if op_name in override_table:
+                result_kwargs = override_table[op_name]
+            elif (op_name, device_type) in override_table:
+                result_kwargs = override_table[(op_name, device_type)]
+            elif (op_name, device_type, dtype) in override_table:
+                result_kwargs = override_table[(op_name, device_type, dtype)]
+            return result_kwargs
+
+        overridden_kwargs = lookup_overrides(inductor_override_kwargs)
+        inductor_configs = lookup_overrides(inductor_config_overrides)
 
         func = op.get_op()
 
@@ -596,49 +600,50 @@ class TestInductorOpInfo(TestCase):
 
         try:
             for sample_input in samples:
-                args = [sample_input.input] + list(sample_input.args)
-                kwargs = sample_input.kwargs
-                # UNCOMMENT TO DEBUG SEGFAULTS
-                # with open("test_output.txt", "a") as f:
-                #     print(f"RUNNING OP {op_name} on {device_type} with {dtype}", flush=True, file=f)
-                #     print(f"RUNNING OP {op_name} on {device_type} with {dtype}", flush=True)
-                if device_type == "cuda":
-                    # opinfo test case have already place the input on the correct device
-                    # so we don't need do additional copy by setting copy_to_cuda=False
+                with torch._inductor.config.patch(inductor_configs):
+                    args = [sample_input.input] + list(sample_input.args)
+                    kwargs = sample_input.kwargs
+                    # UNCOMMENT TO DEBUG SEGFAULTS
+                    # with open("test_output.txt", "a") as f:
+                    #     print(f"RUNNING OP {op_name} on {device_type} with {dtype}", flush=True, file=f)
+                    #     print(f"RUNNING OP {op_name} on {device_type} with {dtype}", flush=True)
+                    if device_type == "cuda":
+                        # opinfo test case have already place the input on the correct device
+                        # so we don't need do additional copy by setting copy_to_cuda=False
 
-                    no_python = do_nopython(fn, args, kwargs)
-                    adjusted_kwargs = {
-                        "check_lowp": False,
-                        "nopython": no_python,
-                        "copy_to_cuda": False,
-                        "reference_in_float": False,
-                        "check_gradient": requires_grad,
-                        "check_has_compiled": no_python,
-                    }
-                    adjusted_kwargs.update(overridden_kwargs)
-                    self.check_model_cuda(
-                        fn,
-                        args,
-                        kwargs,
-                        **adjusted_kwargs,
-                    )
-                elif device_type == "cpu":
-                    no_python = do_nopython(fn, args, kwargs)
-                    adjusted_kwargs = {
-                        "check_lowp": False,
-                        "nopython": no_python,
-                        "check_has_compiled": no_python,
-                        # skip checking gradient on CPU for now
-                        "check_gradient": False,
-                    }
-                    adjusted_kwargs.update(overridden_kwargs)
+                        no_python = do_nopython(fn, args, kwargs)
+                        adjusted_kwargs = {
+                            "check_lowp": False,
+                            "nopython": no_python,
+                            "copy_to_cuda": False,
+                            "reference_in_float": False,
+                            "check_gradient": requires_grad,
+                            "check_has_compiled": no_python,
+                        }
+                        adjusted_kwargs.update(overridden_kwargs)
+                        self.check_model_cuda(
+                            fn,
+                            args,
+                            kwargs,
+                            **adjusted_kwargs,
+                        )
+                    elif device_type == "cpu":
+                        no_python = do_nopython(fn, args, kwargs)
+                        adjusted_kwargs = {
+                            "check_lowp": False,
+                            "nopython": no_python,
+                            "check_has_compiled": no_python,
+                            # skip checking gradient on CPU for now
+                            "check_gradient": False,
+                        }
+                        adjusted_kwargs.update(overridden_kwargs)
 
-                    self.check_model(
-                        fn,
-                        args,
-                        kwargs,
-                        **adjusted_kwargs,
-                    )
+                        self.check_model(
+                            fn,
+                            args,
+                            kwargs,
+                            **adjusted_kwargs,
+                        )
 
         except Exception as e:
             if test_expect is ExpectedTestResult.XFAILURE:
