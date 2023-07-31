@@ -179,6 +179,32 @@ class ExitCudaDeviceContextManagerLine:
             device_cm_stack.close()
 
 
+class EnterIndentContext:
+    def codegen(self, code: IndentedBuffer, indenter_stack: contextlib.ExitStack):
+        indenter_stack.enter_context(code.indent())
+
+
+class ExitIndentContext:
+    def codegen(self, code: IndentedBuffer, indenter_stack: contextlib.ExitStack):
+        indenter_stack.close()
+
+
+_indent_line_guard_active = False
+
+
+@contextlib.contextmanager
+def indent_line_guard(codegen):
+    global _indent_line_guard_active
+    assert not _indent_line_guard_active
+    try:
+        _indent_line_guard_active = True
+        codegen.writeline(EnterIndentContext())
+        yield
+    finally:
+        codegen.writeline(ExitIndentContext())
+        _indent_line_guard_active = False
+
+
 @dataclasses.dataclass
 class MemoryPlanningLine:
     wrapper: "WrapperCodeGen"
@@ -502,6 +528,7 @@ class WrapperCodeGen(CodeGen):
                     self.lines[i] = self.lines[i].plan(planning_state)
 
             device_cm_stack = contextlib.ExitStack()
+            arbitrary_indent_stack = contextlib.ExitStack()
             for line in self.lines:
                 if isinstance(line, MemoryPlanningLine):
                     line.codegen(self.wrapper_call)
@@ -510,6 +537,14 @@ class WrapperCodeGen(CodeGen):
                     (
                         EnterCudaDeviceContextManagerLine,
                         ExitCudaDeviceContextManagerLine,
+                    ),
+                ):
+                    line.codegen(self.wrapper_call, device_cm_stack)
+                elif isinstance(
+                    line,
+                    (
+                        EnterIndentContext,
+                        ExitIndentContext,
                     ),
                 ):
                     line.codegen(self.wrapper_call, device_cm_stack)
@@ -730,8 +765,14 @@ class WrapperCodeGen(CodeGen):
                 V.graph.scheduler.current_device.index
             )
             self.writeline(
-                f"{name}.run({call_args_str}, grid=grid({grid_str}), stream={stream_name})"
+                'with torch.profiler.record_function("{kernel_name}"):'.format(
+                    kernel_name=name
+                )
             )
+            with indent_line_guard(self):
+                self.writeline(
+                    f"{name}.run({call_args_str}, grid=grid({grid_str}), stream={stream_name})"
+                )
         else:
             self.writeline(self.wrap_kernel_call(name, call_args))
 

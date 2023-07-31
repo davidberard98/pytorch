@@ -1665,9 +1665,11 @@ class TritonKernel(Kernel):
                 stream_name = f"stream{index}"
                 result.writeline(f"{stream_name} = get_cuda_stream({index})")
                 extra_args_str = ", ".join(map(str, extra_args)) + ", "
-                result.writeline(
-                    f"KERNEL_NAME.run(*args, {extra_args_str}grid=grid({', '.join(grid)}), stream={stream_name})"
-                )
+                result.writeline('with torch.profiler.record_function("KERNEL_NAME"):')
+                with result.indent():
+                    result.writeline(
+                        f"KERNEL_NAME.run(*args, {extra_args_str}grid=grid({', '.join(grid)}), stream={stream_name})"
+                    )
 
         # benchmark all configs
         result.writelines(["\n", "\n", "def benchmark_all_configs(args):"])
