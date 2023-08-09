@@ -13,7 +13,11 @@
 namespace torch {
 namespace profiler {
 
+void initManualPythonBindings(PyObject* module);
+
 void initPythonBindings(PyObject* module) {
+  initManualPythonBindings(module);
+
   auto rootModule = py::handle(module).cast<py::module>();
   auto m = rootModule.def_submodule("_profiler");
 
@@ -314,6 +318,16 @@ void initPythonBindings(PyObject* module) {
       "_set_cuda_sync_enabled_val",
       &torch::profiler::impl::set_cuda_sync_enabled_val);
 
+  m.def("_record_function_fast_start_pybind", [](std::string name) {
+    auto guard =
+        std::make_unique<at::RecordFunction>(at::RecordScope::FUNCTION);
+    guard->before(name);
+    torch::profiler::impl::recordFunctionFastStart(std::move(guard));
+  });
+  m.def(
+      "_record_function_fast_stop_pybind",
+      &torch::profiler::impl::recordFunctionFastStop);
+
   py::class_<CapturedTraceback, std::shared_ptr<CapturedTraceback>>(
       m, "CapturedTraceback");
   m.def(
@@ -324,6 +338,221 @@ void initPythonBindings(PyObject* module) {
       py::arg("cpp") = true);
   m.def("symbolize_tracebacks", py_symbolize);
   installCapturedTracebackPython();
+}
+
+namespace {
+PyObject* recordFunctionFastStart(PyObject* _unused, PyObject* name) {
+  HANDLE_TH_ERRORS
+  auto guard = std::make_unique<at::RecordFunction>(at::RecordScope::FUNCTION);
+  THPUtils_checkString(name);
+  guard->before(THPUtils_unpackString(name));
+  torch::profiler::impl::recordFunctionFastStart(std::move(guard));
+  Py_RETURN_NONE;
+  END_HANDLE_TH_ERRORS
+}
+
+PyObject* recordFunctionFastStop(PyObject* _unused, PyObject* _unused2) {
+  HANDLE_TH_ERRORS
+  torch::profiler::impl::recordFunctionFastStop();
+  Py_RETURN_NONE;
+  END_HANDLE_TH_ERRORS
+}
+
+PyObject* recordFunctionFastStartChecked(PyObject* _unused, PyObject* name) {
+  HANDLE_TH_ERRORS
+  if (torch::profiler::impl::ProfilerStateBase::get() != nullptr) {
+    auto guard =
+        std::make_unique<at::RecordFunction>(at::RecordScope::FUNCTION);
+    THPUtils_checkString(name);
+    guard->before(THPUtils_unpackString(name));
+    torch::profiler::impl::recordFunctionFastStart(std::move(guard));
+  }
+  Py_RETURN_NONE;
+  END_HANDLE_TH_ERRORS
+}
+
+PyObject* recordFunctionFastStopChecked(PyObject* _unused, PyObject* _unused2) {
+  HANDLE_TH_ERRORS
+  if (torch::profiler::impl::ProfilerStateBase::get() != nullptr) {
+    torch::profiler::impl::recordFunctionFastStop();
+  }
+  Py_RETURN_NONE;
+  END_HANDLE_TH_ERRORS
+}
+
+struct RecordFunctionFast {
+  PyObject_HEAD PyObject* name;
+  std::unique_ptr<at::RecordFunction> guard;
+};
+
+PyObject* RecordFunctionFast_new(
+    PyTypeObject* subtype,
+    PyObject* args,
+    PyObject* kwargs) {
+  RecordFunctionFast* self = (RecordFunctionFast*)subtype->tp_alloc(subtype, 0);
+  return (PyObject*)self;
+}
+
+int RecordFunctionFast_init(
+    PyObject* selfGeneric,
+    PyObject* args,
+    PyObject* kwargs) {
+  auto self = (RecordFunctionFast*)selfGeneric;
+  static char* kwlist[] = {"name"};
+  PyObject* name = nullptr;
+  if (!PyArg_ParseTupleAndKeywords(
+          args, kwargs, "O", const_cast<char**>(kwlist), &name)) {
+    return -1;
+  }
+  if (name) {
+    Py_INCREF(name);
+    self->name = name;
+  }
+  return 0;
+}
+
+PyObject* RecordFunctionFast_repr(PyObject* self) {
+  PyObject* obj = PyUnicode_FromString("RecordFunctionFast()");
+  return obj;
+}
+
+void RecordFunctionFast_dealloc(PyObject* selfGeneric) {
+  auto self = (RecordFunctionFast*)selfGeneric;
+  if (self) {
+    if (self->name) {
+      Py_DECREF(self->name);
+    }
+    if (self->guard) {
+      self->guard.reset();
+    }
+  }
+  Py_TYPE(self)->tp_free(self);
+}
+
+PyObject* RecordFunctionFast_enter(PyObject* selfGeneric, PyObject* unused) {
+  HANDLE_TH_ERRORS
+  if (torch::profiler::impl::ProfilerStateBase::get() != nullptr) {
+    auto self = (RecordFunctionFast*)selfGeneric;
+    TORCH_INTERNAL_ASSERT(
+        !self->guard,
+        "Trying to enter a new record_function_fast context but the guard is unexpectedly already set");
+    TORCH_INTERNAL_ASSERT(
+        self->name,
+        "Trying to enter a new record_function_fast context but self->name is not set");
+    self->guard =
+        std::make_unique<at::RecordFunction>(at::RecordScope::FUNCTION);
+    THPUtils_checkString(self->name);
+    // auto str_name = THPUtils_unpackString(self->name);
+    std::string str_name;
+    if (PyUnicode_Check(self->name)) {
+      Py_ssize_t size;
+      const char* data = PyUnicode_AsUTF8AndSize(self->name, &size);
+      str_name = std::string(data);
+    }
+    self->guard->before(str_name);
+  }
+  Py_RETURN_NONE;
+  END_HANDLE_TH_ERRORS
+}
+
+PyObject* RecordFunctionFast_exit(PyObject* selfGeneric, PyObject* unused) {
+  HANDLE_TH_ERRORS
+  if (torch::profiler::impl::ProfilerStateBase::get() != nullptr) {
+    auto self = (RecordFunctionFast*)selfGeneric;
+    TORCH_INTERNAL_ASSERT(
+        self->guard,
+        "Trying to exit an active record_function_fast context but no guard is set");
+    self->guard.reset();
+  }
+  Py_RETURN_NONE;
+  END_HANDLE_TH_ERRORS
+}
+
+PyObject* RecordFunctionFast_set_name(PyObject* selfGeneric, PyObject* pyName) {
+  HANDLE_TH_ERRORS
+  auto self = (RecordFunctionFast*)selfGeneric;
+  if (self->name) {
+    Py_DECREF(self->name);
+    self->name = nullptr;
+  }
+
+  if (pyName) {
+    // THPUtils_checkString(pyName);
+    Py_INCREF(pyName);
+    self->name = pyName;
+  }
+  Py_RETURN_NONE;
+  END_HANDLE_TH_ERRORS
+}
+
+static PyMethodDef RecordFunctionFast_methods[] = {
+    {"__enter__", RecordFunctionFast_enter, METH_NOARGS, nullptr},
+    {"__exit__", RecordFunctionFast_exit, METH_VARARGS, nullptr},
+    {"set_name", RecordFunctionFast_set_name, METH_O, nullptr},
+    {NULL},
+};
+
+PyTypeObject RecordFunctionFast_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0).tp_name =
+        "torch._C._profiler_manual.RecordFunctionFast",
+    .tp_basicsize = sizeof(RecordFunctionFast),
+    .tp_dealloc = (destructor)RecordFunctionFast_dealloc,
+    // .tp_repr = (reprfunc) RecordFunctionFast_repr,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    .tp_methods = RecordFunctionFast_methods,
+    .tp_init = RecordFunctionFast_init,
+    .tp_new = RecordFunctionFast_new,
+};
+
+} // namespace
+
+static PyObject* profilerManualModule = NULL;
+
+void initManualPythonBindings(PyObject* module) {
+  static PyMethodDef functions[] = {
+      {(char*)"_record_function_fast_start",
+       recordFunctionFastStart,
+       METH_O,
+       nullptr},
+      {(char*)"_record_function_fast_stop",
+       recordFunctionFastStop,
+       METH_NOARGS,
+       nullptr},
+      {(char*)"_record_function_fast_start_checked",
+       recordFunctionFastStartChecked,
+       METH_O,
+       nullptr},
+      {(char*)"_record_function_fast_stop_checked",
+       recordFunctionFastStopChecked,
+       METH_NOARGS,
+       nullptr},
+      {NULL}};
+
+  static struct PyModuleDef def = {
+      PyModuleDef_HEAD_INIT, "torch._C._profiler_manual", NULL, -1, functions};
+  PyObject* profilerManual = PyModule_Create(&def);
+  profilerManualModule = profilerManual;
+  if (!profilerManual) {
+    throw python_error();
+  }
+
+  if (PyType_Ready(&RecordFunctionFast_Type) < 0) {
+    throw python_error();
+  }
+
+  Py_INCREF(&RecordFunctionFast_Type);
+  if (PyModule_AddObject(
+          profilerManual,
+          "_RecordFunctionFast",
+          (PyObject*)&RecordFunctionFast_Type) != 0) {
+    Py_DECREF(&RecordFunctionFast_Type);
+    throw python_error();
+  }
+
+  // steal a reference to to profilerManual
+  if (PyModule_AddObject(module, "_profiler_manual", profilerManual) != 0) {
+    throw python_error();
+  }
 }
 
 } // namespace profiler

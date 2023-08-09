@@ -47,6 +47,8 @@ __all__ = [
     "MemRecordsAcc",
 ]
 
+_is_profiler_enabled = False
+
 try:
     # Available in Python >= 3.2
     from contextlib import ContextDecorator as _ContextDecorator
@@ -293,6 +295,8 @@ class profile:
 
     def _start_trace(self):
         self.entered = True
+        global _is_profiler_enabled
+        _is_profiler_enabled = True
         _enable_profiler(self.config(), self.kineto_activities)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -302,6 +306,8 @@ class profile:
         if self.use_cuda:
             torch.cuda.synchronize()
         self.kineto_results = _disable_profiler()
+        global _is_profiler_enabled
+        _is_profiler_enabled = False
         parsed_results = self._parse_kineto_results(self.kineto_results)
         self.function_events = EventList(
             parsed_results,
@@ -723,6 +729,8 @@ class emit_itt:
         if self.entered:
             raise RuntimeError("ITT annotation context manager is not reentrant")
         self.entered = True
+        global _is_profiler_enabled
+        _is_profiler_enabled = True
         _enable_profiler(
             ProfilerConfig(
                 ProfilerState.ITT,
@@ -741,6 +749,8 @@ class emit_itt:
         if not self.enabled:
             return
         _disable_profiler()
+        global _is_profiler_enabled
+        _is_profiler_enabled = False
         return False
 
 
@@ -841,6 +851,8 @@ class emit_nvtx:
             raise RuntimeError("NVTX annotation context manager is not reentrant")
         self.entered = True
         torch.cuda.synchronize()
+        global _is_profiler_enabled
+        _is_profiler_enabled = True
         _enable_profiler(
             ProfilerConfig(
                 ProfilerState.NVTX,
@@ -860,6 +872,8 @@ class emit_nvtx:
             return
         torch.cuda.synchronize()
         _disable_profiler()
+        global _is_profiler_enabled
+        _is_profiler_enabled = False
         return False
 
 

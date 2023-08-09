@@ -1688,6 +1688,16 @@ assert KinetoStepTracker.current_step() == initial_step + 2 * niters
         finally:
             torch._C._profiler._set_record_concrete_inputs_enabled_val(True)
 
+    def test_record_function_fast(self):
+        x, y = (torch.rand((4, 4)) for _ in range(2))
+        with profile() as p:
+            for _ in range(4):
+                torch.profiler.profiler._record_function_fast_start("add_test_fast_rf")
+                x.add(y)
+                torch.profiler.profiler._record_function_fast_stop()
+
+        self.assertGreaterEqual(len([e for e in p.events() if e.name == "add_test_fast_rf"]), 4)
+
 
 def find_node_with_name(nodes, name):
     for node in _utils.traverse_dfs(nodes):

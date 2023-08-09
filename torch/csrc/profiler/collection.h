@@ -641,6 +641,12 @@ TORCH_API bool get_cuda_sync_enabled();
 TORCH_API void set_cuda_sync_enabled_fn(std::function<bool()>);
 TORCH_API void set_cuda_sync_enabled_val(bool);
 
+TORCH_API void checkRecordFunctionFastBefore();
+TORCH_API void checkRecordFunctionFastAfter();
+TORCH_API void recordFunctionFastStart(
+    std::unique_ptr<at::RecordFunction> guard);
+TORCH_API void recordFunctionFastStop();
+
 } // namespace impl
 } // namespace profiler
 } // namespace torch

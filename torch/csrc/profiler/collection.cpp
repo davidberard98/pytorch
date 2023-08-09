@@ -1488,6 +1488,56 @@ void set_cuda_sync_enabled_val(bool val) {
   cuda_sync_enabled_fn() = [val]() { return val; };
 }
 
+/* [NOTE: recordFunctionFast]
+ * These are an alternate way to call record_function from python.
+ * The typical context manager is slow (~15us on benchmarks in Aug 2023), which
+ * is usually fine for module-level annotations in python, but slow for per-op
+ * annotations. Part of the reason it is slow is because the calls go through
+ * the dispatcher, in order to make the record_function calls work with
+ * torchscript.
+ *
+ * This implementation is less safe; it doesn't work with torchscript, and it
+ * doesn't use a context manager (the enter/exit need to be called manually)
+ * because the context manager adds non-negligible overhead. In similar
+ * benchmarks the overhead when not profiling is 0.5-1us, compared to ~0.25us
+ * for pure-python RECORD_FUNCTION contexts. When profiling is enabled and
+ * only record_function names are stored, overhead is ~3us.
+ *
+ * It works by keeping a stack of RecordFunction guards in C++; pushing a
+ * context on the stack begins a record_function event, and popping it off ends
+ * the event. In python, there's an additional check for `_is_profiler_enabled`
+ * to reduce overhead when not profiling.
+ */
+namespace {
+thread_local std::vector<std::unique_ptr<at::RecordFunction>> record_functions;
+} // namespace
+
+void checkRecordFunctionFastBefore() {
+  TORCH_INTERNAL_ASSERT(
+      record_functions.empty(),
+      "record_function_fast stack is not empty when profiling is starting. ",
+      "There is likely an unpaired _record_function_fast_start");
+}
+
+void checkRecordFunctionFastAfter() {
+  TORCH_INTERNAL_ASSERT(
+      record_functions.empty(),
+      "record_function_fast stack is not empty when profiling finishes. ",
+      "There is likely an unpaired _record_function_fast_start");
+}
+
+void recordFunctionFastStart(std::unique_ptr<at::RecordFunction> guard) {
+  record_functions.push_back(std::move(guard));
+}
+
+void recordFunctionFastStop() {
+  TORCH_INTERNAL_ASSERT(
+      !record_functions.empty(),
+      "_record_function_fast_stop called when the stack is empty. ",
+      "There is likely a missing _record_function_fast_start call.");
+  record_functions.pop_back();
+}
+
 } // namespace impl
 } // namespace profiler
 } // namespace torch

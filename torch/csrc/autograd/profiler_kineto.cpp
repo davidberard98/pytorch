@@ -591,6 +591,8 @@ void enableProfiler(
       "Profiler is already enabled",
       (config.global() ? "." : " on this thread."));
 
+  torch::profiler::impl::checkRecordFunctionFastBefore();
+
   if (config.state == ProfilerState::NVTX) {
     torch::profiler::impl::pushNVTXCallbacks(config, scopes);
     return;
@@ -662,6 +664,8 @@ std::unique_ptr<ProfilerResult> disableProfiler() {
         std::move(trace),
         std::move(kineto_state_ptr->event_tree_));
   }
+
+  torch::profiler::impl::checkRecordFunctionFastAfter();
 
   return result;
 }

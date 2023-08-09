@@ -740,3 +740,17 @@ class ExecutionTraceObserver:
                 "A callback to the ET profiler needs to be registered "
                 "first before getting the output file path"
             )
+
+
+# _record_function_enter_fast is designed only for use internally in pytorch.
+# It bypasses the dispatcher call (so it won't work with torchscript).
+# It also does not have a context manager to further reduce overhead.
+# See [NOTE: recordFunctionFast]
+def _record_function_fast_start(name: str):
+    if prof._is_profiler_enabled:
+        torch._C._profiler_manual._record_function_fast_start(name)
+
+
+def _record_function_fast_stop():
+    if prof._is_profiler_enabled:
+        torch._C._profiler_manual._record_function_fast_stop()
