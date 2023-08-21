@@ -742,14 +742,13 @@ class _OpNamespace(types.ModuleType):
         # for overloads and raise an exception if there are more than one.
         namespace_name = self.name
         qualified_op_name = f"{namespace_name}::{op_name}"
-        try:
-            op, overload_names = torch._C._jit_get_operation(qualified_op_name)
-        except RuntimeError as e:
+        op, overload_names = torch._C._jit_get_operation(qualified_op_name)
+        if op is None or overload_names is None:
             # Turn this into AttributeError so getattr(obj, key, default)
             # works (this is called by TorchScript with __origin__)
             raise AttributeError(
                 f"'_OpNamespace' '{self.name}' object has no attribute '{op_name}'"
-            ) from e
+            )
 
         # let the script frontend know that op is identical to the builtin op
         # with qualified_op_name

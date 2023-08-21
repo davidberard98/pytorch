@@ -1590,11 +1590,16 @@ void initJITBindings(PyObject* module) {
 
   m.def(
       "_jit_get_operation",
-      [](const std::string& op_name) {
+      [](const std::string& op_name, bool throw_if_not_found) {
         try {
           auto symbol = Symbol::fromQualString(op_name);
           const auto& unsortedOps = getAllOperatorsFor(symbol);
-          TORCH_CHECK(!unsortedOps.empty(), "No such operator ", op_name);
+          if (unsortedOps.empty()) {
+            if (!throw_if_not_found) {
+              return py::make_tuple(py::none(), py::none());
+            }
+            TORCH_CHECK(!unsortedOps.empty(), "No such operator ", op_name);
+          }
 
           // Depending on the order of registration, aten or jit ops may be
           // registered first. This sorting is helpful in cases where
@@ -1653,7 +1658,7 @@ void initJITBindings(PyObject* module) {
           throw std::runtime_error(msg);
         }
       },
-      py::arg("qualified_name"));
+      py::arg("qualified_name"), py::arg("throw_if_not_found") = true);
 
   m.def(
       "parse_ir",
