@@ -4,6 +4,7 @@
 #include <memory>
 #include <type_traits>
 #include <utility>
+#include <variant>
 
 #include <ATen/core/Dict.h>
 #include <ATen/core/List.h>
@@ -846,6 +847,9 @@ struct C10_EXPORT ivalue::Future final : c10::intrusive_ptr_target {
 
   friend c10::intrusive_ptr<Future>;
 
+  using future_callback_t = std::variant<std::function<void(Future&)>,std::function<void()>>;
+  // using future_callback_t = std::function<void(Future&)>;
+
  public:
   Future(const Future&) = delete;
   Future(Future&&) = delete;
@@ -942,13 +946,14 @@ struct C10_EXPORT ivalue::Future final : c10::intrusive_ptr_target {
       events_.push_back(std::move(event));
     }
 
-    std::vector<std::function<void(Future&)>> cbs;
+    // std::vector<future_callback_t> cbs;
+    std::vector<std::variant<std::function<void(Future&)>,std::function<void()>>> cbs;
     cbs.swap(callbacks_);
     lock.unlock();
 
     finished_cv_.notify_all();
     for (auto& callback : cbs) {
-      invokeCallback(std::move(callback));
+      invokeVariantCallback(std::move(callback));
     }
   }
 
@@ -1021,13 +1026,21 @@ struct C10_EXPORT ivalue::Future final : c10::intrusive_ptr_target {
    * The callbacks will be executed once the future completes.
    * If the future has already completed,
    * this function will execute the callback immediately.
+   *
+   * The callback can either have the signature void(Future&), or void().
+   * In the former case, the future will be properly synchronized so that
+   * its values can be used safely by the callback. If void() is called,
+   * the synchronization will not occur.
    */
   template <typename T>
   void addCallback(T callback) {
 #if __cpp_lib_is_invocable >= 201703
+    static_assert(std::is_invocable_r<void, T, Future&>::value, "Callback must have signature void(Future&)");
+/*
     static_assert(
-        std::is_invocable_r<void, T, Future&>::value,
-        "The callback must have signature void(Future&)");
+        std::is_invocable_r<void, T, Future&>::value || std::is_invocable_r<void, T, void>::value,
+        "The callback must have signature void(Future&) or void()");
+*/
 #endif
     std::unique_lock<std::mutex> lock(mutex_);
     if (completed()) {
@@ -1154,23 +1167,50 @@ struct C10_EXPORT ivalue::Future final : c10::intrusive_ptr_target {
   // synchronize them with the value, and so on (if needed).
   template<typename T>
   void invokeCallback(T callback) {
-#if __cpp_lib_is_invocable >= 201703
     static_assert(
-        std::is_invocable_r<void, T, Future&>::value,
-        "The callback must have signature void(Future&)");
-#endif
+      std::is_invocable_r<void, T, Future&>::value, "The callback must have signature void(Future&) or void()"
+    );
+    /*
+    static_assert(
+      std::disjunction<std::is_invocable_r<void, T, Future&>, std::is_invocable_r<void, T>>::value,
+      "The callback must have signature void(Future&) or void()"
+    );
+    */
+    if constexpr (std::is_invocable_r<void, T, Future&>::value) {
+      c10::OptionalDeviceGuard deviceGuard(currentDevice_);
 
-    c10::OptionalDeviceGuard deviceGuard(currentDevice_);
+      std::vector<c10::Stream> streams;
+      streams.reserve(devices_.size());
+      for (const c10::Device& device : devices_) {
+        streams.push_back(impl_.getStreamFromGlobalPool(device));
+      }
+      c10::MultiStreamGuard streamGuard(streams);
+      synchronizeWithCurrentStreams();
 
-    std::vector<c10::Stream> streams;
-    streams.reserve(devices_.size());
-    for (const c10::Device& device : devices_) {
-      streams.push_back(impl_.getStreamFromGlobalPool(device));
+      callback(*this);
+    } else if constexpr (std::is_invocable_r<void, T>::value) {
+      // Why we don't need to synchronize in the case of a void() callback:
+      // The above synchronization doesn't actually wait on the CPU side for
+      // the future to be completed; it actually just inserts any necessary
+      // synchronization between streams so that the future can safely be
+      // handled by the callback. For example, if the outputs of the future
+      // will be on stream 1 and the callback is running on stream 2, we
+      // need to add output.recordStream(2) so that if the callback tries to
+      // operate on the output, the operation will be blocked by the
+      // recordStream, which guarantees that the output will be ready by the
+      // time that the operation stops blocking.
+      callback();
     }
-    c10::MultiStreamGuard streamGuard(streams);
-    synchronizeWithCurrentStreams();
+  }
 
-    callback(*this);
+  void invokeVariantCallback(std::variant<std::function<void(Future&)>,std::function<void()>> callback) {
+    if (std::holds_alternative<std::function<void(Future&)>>(callback)) {
+      invokeCallback(std::move(std::get<std::function<void(Future&)>>(callback)));
+    } else if (std::holds_alternative<std::function<void()>>(callback)) {
+      // invokeCallback(std::move(std::get<std::function<void()>>(callback)));
+    } else {
+      TORCH_INTERNAL_ASSERT(false, "The callback must have signature void(Future&) or void()");
+    }
   }
 
   // This method should be called before this future's value is used, as it
@@ -1206,13 +1246,14 @@ struct C10_EXPORT ivalue::Future final : c10::intrusive_ptr_target {
     completed_ = true;
     eptr_ = std::move(eptr);
 
-    std::vector<std::function<void(Future&)>> cbs;
+    // std::vector<future_callback_t> cbs;
+    std::vector<std::variant<std::function<void(Future&)>,std::function<void()>>> cbs;
     cbs.swap(callbacks_);
     lock.unlock();
 
     finished_cv_.notify_all();
     for (auto& callback : cbs) {
-      invokeCallback(std::move(callback));
+      invokeVariantCallback(std::move(callback));
     }
   }
 
@@ -1353,7 +1394,8 @@ struct C10_EXPORT ivalue::Future final : c10::intrusive_ptr_target {
 
   IValue value_; // when finished the value
   TypePtr type_;
-  std::vector<std::function<void(Future&)>> callbacks_;
+
+  std::vector<future_callback_t> callbacks_;
   std::exception_ptr eptr_;
 
   // An upcast pointer to a virtual class which allows us to manipulate events,
