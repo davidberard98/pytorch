@@ -1802,15 +1802,20 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::collective(
     work->future_ = c10::make_intrusive<at::ivalue::Future>(
         c10::ListType::create(c10::TensorType::get()), devices);
 
-    // Add a callback that runs profiling end callbacks. wrapCallback() in CUDA
-    // future blocks the stream this callback runs on the corresponding
-    // ncclEndEvents_ ensuring appropriate synchronization.
-    if (work->recordFunctionEndCallback_) {
-      work->future_->addCallback([work](at::ivalue::Future& /* unused */) {
-        work->recordFunctionEndCallback_();
-      });
-    }
     work->future_->markCompleted(at::IValue(*work->outputs_));
+
+    // Run a callback that runs profiling end callbacks. Note that previously
+    // this function was registered as a callback that was executed during
+    // markCompleted(), called above; the purpose was to force synchronization
+    // for the profiling event. However, the synchronization causes memory
+    // to be saved for longer than needed due to a recordStream call:
+    // https://dev-discuss.pytorch.org/t/fsdp-cudacachingallocator-an-outsider-newb-perspective/1486
+    // The synchronization isn't really needed for the profiler end-callback
+    // anyway, beceause the callback doesn't actually use the result of the
+    // future object.
+    if (work->recordFunctionEndCallback_) {
+      work->recordFunctionEndCallback_();
+    }
   }
 
   // Set appropriate work parameters.
@@ -3269,6 +3274,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::_allgather_base(
     at::Tensor& output_tensor,
     at::Tensor& input_tensor,
     const AllgatherOptions& /*unused */) {
+  std::cerr << "    <_allgather_base>" << std::endl;
   check_gpu_single_tensor(input_tensor);
   check_gpu_single_tensor(output_tensor);
 
@@ -3286,6 +3292,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::_allgather_base(
   auto inputs = std::vector<at::Tensor>{input_tensor};
   auto outputs = std::vector<at::Tensor>{output_tensor};
 
+  std::cerr << "    </_allgather_base>" << std::endl;
   // avoidRecordStreams_ note: collective() will stash inputs and outputs.
   return collective(
       inputs,
@@ -3294,17 +3301,21 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::_allgather_base(
           at::Tensor& output,
           ncclComm_t comm,
           at::cuda::CUDAStream& stream) {
+        std::cerr << " <collective START>" << std::endl;
         if (!avoidRecordStreams_) {
+          std::cerr << " !!!! avoidRecordStreams_ !!!!" << std::endl;
           c10::cuda::CUDACachingAllocator::recordStream(
               output.storage().data_ptr(), stream);
         }
-        return ncclAllGather(
+        auto res = ncclAllGather(
             input.data_ptr(),
             output.data_ptr(),
             input.numel(),
             getNcclDataType(input.scalar_type()),
             comm,
             stream.stream());
+        std::cerr << " </collective START>" << std::endl;
+        return res;
       },
       OpType::_ALLGATHER_BASE,
       "nccl:_all_gather_base");
