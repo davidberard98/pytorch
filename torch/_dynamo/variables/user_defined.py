@@ -236,6 +236,7 @@ class UserDefinedClassVariable(UserDefinedVariable):
         from ..side_effects import SideEffects
         from .builder import SourcelessBuilder, wrap_fx_proxy
         from .builtin import BuiltinVariable
+        from torch.nested._internal.nested_tensor import NestedTensor
 
         constant_args = check_constant_args(args, kwargs)
 
@@ -392,6 +393,17 @@ class UserDefinedClassVariable(UserDefinedVariable):
                 )
                 args = [stacked]
 
+            tensor_variable = wrap_fx_proxy(
+                tx=tx,
+                proxy=tx.output.create_proxy(
+                    "call_function",
+                    self.value,
+                    *proxy_args_kwargs(args, kwargs),
+                ),
+            )
+
+            return tensor_variable
+        if self.value is NestedTensor:
             tensor_variable = wrap_fx_proxy(
                 tx=tx,
                 proxy=tx.output.create_proxy(

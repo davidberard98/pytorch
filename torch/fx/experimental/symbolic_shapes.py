@@ -158,7 +158,7 @@ def is_concrete_int(a: Union[int, SymInt]):
     if isinstance(a, int):
         return True
 
-    if isinstance(a.node.expr, sympy.core.numbers.Integer):
+    if isinstance(getattr(a.node, "expr", None), sympy.core.numbers.Integer):
         return True
 
     return False

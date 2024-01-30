@@ -1226,7 +1226,11 @@ def _make_user_magic(method, user_type):
         other_node = to_node(self.node, other)
         if other_node is NotImplemented:
             return NotImplemented
-        ret = wrap_node(getattr(self.node, method_attr)(other_node))
+        try:
+            ret = wrap_node(getattr(self.node, method_attr)(other_node))
+        except:
+            breakpoint()
+            raise
         return get_constant(ret) if is_constant(ret) else ret
 
     def rbinary_magic_impl(self, other):

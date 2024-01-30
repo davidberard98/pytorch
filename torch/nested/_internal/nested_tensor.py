@@ -100,6 +100,7 @@ class NestedTensor(torch.Tensor):
         nested_size.extend(Ds[self._ragged_idx - 1 :])
         self._size = tuple(nested_size)
 
+        # breakpoint()
         stride = values.stride()
         self._strides = (ragged_size * stride[self._ragged_idx - 1], *stride)
 
@@ -194,11 +195,24 @@ class NestedTensor(torch.Tensor):
         # during aot autograd, FunctionalTensors are not fake but hold
         # symbolic sizes.
         ragged_source = offsets if lengths is None else lengths
-        if has_free_symbols(ragged_source) or has_free_symbols(values):
+        handle_size = has_free_symbols(ragged_source) or has_free_symbols(values)
+
+        def is_tracing_tensor(x):
+            return isinstance(x, (torch._subclasses.fake_tensor.FakeTensor, torch._subclasses.functional_tensor.FunctionalTensor))
+
+        handle_size = is_tracing_tensor(ragged_source) or is_tracing_tensor(values)
+        if handle_size:
+            # if True:
             # Associate offsets or lengths (possibly fake, possibly functionalized)
             # with the ragged_size.
             ragged_size = outer_size[ragged_idx]
             _tensor_symint_registry[ragged_source] = ragged_size
+            print(f"  Update [{id(ragged_source)} = {ragged_source}] -> {outer_size}")
+            # breakpoint()
+        else:
+            print(f"  DONT Update [{id(ragged_source)} = {ragged_source}] -> {outer_size}: already there? {ragged_source in _tensor_symint_registry}, {_tensor_symint_registry[ragged_source] if ragged_source in _tensor_symint_registry else None}")
+            # breakpoint()
+            # breakpoint()
 
         return NestedTensor(
             values,

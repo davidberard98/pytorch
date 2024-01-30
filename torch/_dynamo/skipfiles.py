@@ -212,6 +212,7 @@ MOD_INLINELIST = {
     "torch.export.wrapper",
     "torch.fx._pytree",
     "torch.fx.passes.shape_prop",
+    "torch.nested._internal.nested_tensor",
     "torch.nn",
     "torch.random",
     "torch.sparse",

@@ -207,6 +207,11 @@ def transform_subclass(t, callback, outer_size=None, outer_stride=None):
         transformed_tensors_dict, ctx, outer_size, outer_stride
     )
 
+    from torch.nested._internal.nested_tensor import NestedTensor
+    if type(t) is NestedTensor:
+        pass
+        # breakpoint()
+
     # NB: Purposefully guard here to simplify the inner / outer symbols.
     # Using sym_eq() for symbolic comparison can result in an expression that's too
     # difficult to guard on, so we use == here.
