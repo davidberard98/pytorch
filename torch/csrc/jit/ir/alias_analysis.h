@@ -1,5 +1,6 @@
 #pragma once
 
+#include <unordered_map>
 #include <ATen/core/alias_info.h>
 #include <c10/util/flat_hash_map.h>
 #include <torch/csrc/jit/ir/ir.h>
@@ -9,6 +10,47 @@
 
 namespace torch {
 namespace jit {
+
+struct HashMapWrapper {
+  using map_type = ska::flat_hash_map<TypePtr, Element*, HashType, EqualType>;
+  map_type map;
+  std::unordered_map<size_t, std::vector<TypePtr>> key_overlap;
+
+  using iterator = map_type::iterator;
+  using const_iterator = map_type::const_iterator;
+  iterator begin() {
+    return map.begin();
+  }
+  const_iterator begin() const {
+    return map.begin();
+  }
+  iterator end() {
+    return map.end();
+  }
+  const_iterator end() const {
+    return map.end();
+  }
+  iterator find(const TypePtr& t) {
+    return map.find(t);
+  }
+  const_iterator find(const TypePtr& t) const {
+    return map.find(t);
+  }
+  std::pair<iterator, bool> emplace(TypePtr, Element*);
+  uint64_t size() const {
+    return map.size();
+  }
+  uint64_t max_size() const {
+    return map.max_size();
+  }
+  uint64_t bucket_count() const {
+    return map.bucket_count();
+  }
+  uint64_t max_bucket_count() const {
+    return map.max_bucket_count();
+  }
+
+};
 
 /**
  * Alias analysis pass.
@@ -272,7 +314,8 @@ class AliasDb {
   // Mapping of values to MemoryDAG elements
   ska::flat_hash_map<const Value*, Element*> elementMap_;
   // All wildcard Elements (one for each unique mutable type)
-  ska::flat_hash_map<TypePtr, Element*, HashType, EqualType> wildcardIndex_;
+  // ska::flat_hash_map<TypePtr, Element*, HashType, EqualType> wildcardIndex_;
+  HashMapWrapper wildcardIndex_;
   Element* getWildcard(const TypePtr& type) const;
   c10::optional<Element*> tryGetOrCreateWildcard(const TypePtr& type);
   void addContainedTypesToFreshElement(

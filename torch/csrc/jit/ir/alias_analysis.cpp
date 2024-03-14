@@ -14,6 +14,36 @@
 namespace torch::jit {
 
 namespace {
+std::atomic<long> emplace_counter{0};
+} // namespace
+
+std::pair<HashMapWrapper::iterator, bool> HashMapWrapper::emplace(TypePtr t, Element* e) {
+  auto res = map.emplace(t, e);
+  auto& arr = key_overlap[HashType()(t)];
+  bool found = false;
+  auto compare = EqualType();
+  for (auto& x : arr) {
+    if (compare(x, t)) {
+      found = true;
+    }
+  }
+  if (!found) {
+    arr.push_back(t);
+  }
+  if (emplace_counter++ % 1000) {
+    for (const auto& [hash_key, types] : key_overlap) {
+      std::cerr << " [key_overlap] " << hash_key << " :";
+      for (const auto& t : types) {
+        std::cerr <<  " " << t->repr_str();
+      }
+      std::cerr << "\n";
+    }
+    std::cerr << std::endl;
+  }
+  return res;
+}
+
+namespace {
 
 c10::MaybeOwned<TypePtr> toSingleType(const AliasTypeSet& mut_types) {
   return mut_types.size() == 1
@@ -1893,7 +1923,10 @@ bool AliasDb::mayAliasWildcard(const at::ArrayRef<Value*> vs) const {
       vs.begin(), vs.end(), [&](Value* v) { return mayAliasWildcard(v); });
 }
 
+std::atomic<long> tgocw{0};
+
 c10::optional<Element*> AliasDb::tryGetOrCreateWildcard(const TypePtr& type) {
+  std::cerr << " TGOCW " << tgocw++ << std::endl;
   auto maybe_mut_types = mapTypeToAliasTypeSetPtr(type);
   if (!maybe_mut_types) {
     return c10::nullopt;
@@ -1906,6 +1939,7 @@ c10::optional<Element*> AliasDb::tryGetOrCreateWildcard(const TypePtr& type) {
 
   auto wildcard_elem = memoryDAGBuilder_->makeFreshValue(nullptr);
   wildcardIndex_.emplace(*std::move(mut_type), wildcard_elem);
+  std::cerr << "   wildcardIndex properties: " << wildcardIndex_.size() << "; max_size " << wildcardIndex_.max_size() << "; bucket count " << wildcardIndex_.bucket_count() << "; max_bucket_count " << wildcardIndex_.max_bucket_count() << std::endl;
   if (maybe_mut_types->size() > 1) {
     pointUnionTypeElementToAllContainedTypes(wildcard_elem, *maybe_mut_types);
   } else {
@@ -1965,8 +1999,11 @@ Element* AliasDb::getWildcard(const TypePtr& type) const {
   return {};
 }
 
+std::atomic<long> setWildcardCounter{0};
+
 // Register `v` as a wildcard value.
 c10::optional<Element*> AliasDb::setWildcard(const Value* v) {
+  std::cerr << " !setWildcard " << setWildcardCounter++ << std::endl;
   c10::optional<Element*> maybe_wildcardElement =
       tryGetOrCreateWildcard(v->type());
   if (!maybe_wildcardElement) {
