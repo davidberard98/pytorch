@@ -147,6 +147,7 @@ class CachingAutotuner(KernelInterface):
         size_hints=None,
         inductor_meta=None,  # metadata not relevant to triton
         custom_kernel=False,  # whether the kernel is inductor-generated or custom
+        filename=None,
     ):
         super().__init__()
 
@@ -190,6 +191,7 @@ class CachingAutotuner(KernelInterface):
             is_mm=False, name=self.fn.__name__, size_hints=size_hints
         )
 
+        print("(dberard)", filename)
         # pre-create the profiler context manager to reduce latency
         self.record_function_ctx = torch._C._profiler._RecordFunctionFast(
             self.inductor_meta.get("kernel_name", "triton kernel")
@@ -967,6 +969,7 @@ def cached_autotune(
             heuristic_type=heuristic_type,
             size_hints=size_hints,
             custom_kernel=custom_kernel,
+            filename=filename,
         )
 
     return decorator
