@@ -538,19 +538,19 @@ def compute_unbacked_bindings(shape_env, example_value, old_example_value=None, 
                 r.update(
                     free_unbacked_symbols_with_path(
                         a.size(), path + (CallMethodKey("size"),),
-                        real=a.real_tensor.size() if a.real_tensor is not None else None
+                        real=a.real_tensor.size() if getattr(a, "real_tensor", None) is not None else None
                     )
                 )
                 r.update(
                     free_unbacked_symbols_with_path(
                         a.stride(), path + (CallMethodKey("stride"),),
-                        real=a.real_tensor.stride() if a.real_tensor is not None else None
+                        real=a.real_tensor.stride() if getattr(a, "real_tensor", None) is not None else None
                     )
                 )
                 r.update(
                     free_unbacked_symbols_with_path(
                         a.storage_offset(), path + (CallMethodKey("storage_offset"),),
-                        real=a.real_tensor.storage_offset() if a.real_tensor is not None else None
+                        real=a.real_tensor.storage_offset() if getattr(a, "real_tensor", None) is not None else None
                     )
                 )
 
