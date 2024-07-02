@@ -2,6 +2,9 @@
 #include <torch/csrc/jit/tensorexpr/analysis.h>
 #include <torch/csrc/jit/tensorexpr/codegen.h>
 
+#include <torch/csrc/jit/tensorexpr/kernel.h>
+#include <iostream>
+
 #include <sstream>
 
 namespace torch::jit::tensorexpr {
@@ -53,9 +56,13 @@ std::unique_ptr<CodeGen> CreateCodeGen(
     const std::vector<CodeGen::BufferArg>& params,
     at::Device device,
     const std::string& kernel_func_name) {
+  std::cerr << "   |CreateCodeGen| beginning :name " << name << " " << getLocaleFn()() << std::endl;
   RegisterCodeGenList::StmtFactoryMethod method =
       RegisterCodeGenList::GetInstance().FindStmtFactoryMethod(name);
-  return method(stmt, params, device, kernel_func_name);
+  std::cerr << "   |CreateCodeGen| before calling method() " << getLocaleFn()() << std::endl;
+  auto ret = method(stmt, params, device, kernel_func_name);
+  std::cerr << "   |CreateCodeGen| end " << getLocaleFn()() << std::endl;
+  return ret;
 }
 
 ExprPtr GenericIntrinsicsExpander::mutate(IntrinsicsPtr v) {

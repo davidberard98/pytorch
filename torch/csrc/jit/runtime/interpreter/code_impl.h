@@ -14,6 +14,9 @@
 #include <torch/csrc/jit/runtime/instruction.h>
 #include <torch/csrc/jit/runtime/interpreter/preprocess_graph.h>
 
+#include <iostream>
+#include <torch/csrc/jit/tensorexpr/kernel.h>
+
 C10_DECLARE_bool(torch_jit_enable_expanded_stacks);
 
 namespace torch::jit {
@@ -160,6 +163,7 @@ struct CodeImpl {
         preprocess_(*graph),
         current_node_(preprocess_.graph->return_node()),
         remaining_bailout_depth_(remaining_bailout_depth) {
+    std::cerr << "   CodeImpl constructor: begin " << tensorexpr::getLocaleFn()() << std::endl;
     graph_ = preprocess_.graph;
     n_outputs = graph_->outputs().size();
     if (n_outputs == 1) {
@@ -169,10 +173,12 @@ struct CodeImpl {
           fmap(graph->outputs(), [](const Value* v) { return v->type(); }));
     }
     n_inputs = graph_->inputs().size();
+    std::cerr << "   CodeImpl constructor: before emit_instructions -> run " << tensorexpr::getLocaleFn()() << std::endl;
     if (emit_instructions) {
       // NOLINTNEXTLINE(clang-analyzer-optin.cplusplus.VirtualCall)
       run();
     }
+    std::cerr << "   CodeImpl constructor: done " << tensorexpr::getLocaleFn()() << std::endl;
   }
 
   virtual ~CodeImpl() = default;
@@ -182,11 +188,15 @@ struct CodeImpl {
   // that changes internals of CodeImpl into a separate
   // function.
   virtual void run() {
+    std::cerr << "   CodeImpl::run before emitCodeForBlock " << tensorexpr::getLocaleFn()() << std::endl;
     emitCodeForBlock(graph_->block());
+    std::cerr << "   CodeImpl::run before insertInstruction " << tensorexpr::getLocaleFn()() << std::endl;
     insertInstruction(RET);
     // we deferred the emission of bailout blocks so they appear at the end
     // emit them now and patch up the jumps
+    std::cerr << "   CodeImpl::run before insertBailoutBlocks " << tensorexpr::getLocaleFn()() << std::endl;
     insertBailoutBlocks();
+    std::cerr << "   CodeImpl::run end " << tensorexpr::getLocaleFn()() << std::endl;
   }
 
   const std::vector<c10::IValue>& constant_table() const {
@@ -380,11 +390,21 @@ struct CodeImpl {
   }
 
   virtual void emitOperator(Node* node) {
+    std::stringstream ss;
+    ss << *node;
+    std::string node_name = ss.str();
+    bool is_texpr =  (node_name.find("TensorExprGroup") != std::string::npos);
+    if (node_name.find("aten::add") != std::string::npos) {
+      std::cerr << " <><><> ATEN ADD!" << std::endl;
+    }
+    if (is_texpr) std::cerr << "    CodeImpl: emitOperator " << *node << " " << tensorexpr::getLocaleFn()() << std::endl;
     emitLoadInputs(node->inputs());
+    if (is_texpr) std::cerr << "    CodeImpl: emitOperator after emitLoadInputs " << tensorexpr::getLocaleFn()() << std::endl;
     const Operator& op = node->getOperator();
     int num_inputs = node->inputs().size();
     bool is_vararg = op.schema().is_vararg();
 
+    if (is_texpr) std::cerr << "    CodeImpl: emitOperator before add_to_operator_table " << tensorexpr::getLocaleFn()() << std::endl;
     int operation_index = add_to_operator_table(
         op,
         node,
@@ -392,11 +412,15 @@ struct CodeImpl {
         num_inputs,
         is_vararg);
 
+    if (is_texpr) std::cerr << "    CodeImpl: emitOperator before insert " << tensorexpr::getLocaleFn()() << std::endl;
     if (op.hasOperation() && is_vararg) {
+      if (is_texpr) std::cerr << "    CodeImpl: emitOperator before insert [vararg] " << tensorexpr::getLocaleFn()() << std::endl;
       insertInstruction(OPN, operation_index, num_inputs);
     } else {
+      if (is_texpr) std::cerr << "    CodeImpl: emitOperator before insert [!vararg] " << tensorexpr::getLocaleFn()() << std::endl;
       insertInstruction(OP, operation_index);
     }
+    std::cerr << "    CodeImpl: emitOperator DONE " << tensorexpr::getLocaleFn()() << std::endl;
   }
 
   void emitWait(Node* node) {

@@ -24,6 +24,9 @@
 
 #include <unordered_map>
 
+#include <iostream>
+#include <torch/csrc/jit/tensorexpr/kernel.h>
+
 namespace torch::jit::tensorexpr {
 
 // A RAII wrapper to manage a variable and name pair in the look-up table.
@@ -880,6 +883,8 @@ void CudaCodeGen::Initialize() {
   // TODO: handle dynamic dimension.
   // TODO: call nvrtc.
   // TODO: merge HasRand with CudaAnalysis.
+  std::cerr << "     |CudaCodeGen::Initialize| beginning " << getLocaleFn()() << std::endl;
+
   GenericIntrinsicsExpander intrinsics_expander;
   apply_mutator(&intrinsics_expander);
 
@@ -1076,7 +1081,9 @@ void CudaCodeGen::Initialize() {
       metavar_rewriter_->gpu_thread_extents(),
       ")");
 
+  std::cerr << "     |CudaCodeGen::Initialize| before CompileToNVRTC " << getLocaleFn()() << std::endl;
   CompileToNVRTC(oss_.str(), func_name);
+  std::cerr << "     |CudaCodeGen::Initialize| end " << getLocaleFn()() << std::endl;
 }
 
 void CudaCodeGen::call_with_numel(void** args, int64_t numel) {
@@ -1287,6 +1294,7 @@ at::Tensor CudaCodeGen::empty_strided(
 void CudaCodeGen::CompileToNVRTC(
     const std::string& code,
     const std::string& func_name) {
+  std::cerr << "      |CudaCodeGen::CompileToNVRTC| beginning " << getLocaleFn()() << std::endl;
   at::cuda::jit::initializeCudaContext();
   // Note: hacked at::DeviceGuard since at::DeviceGuard was failing to work
   // properly in some scenarios
@@ -1378,6 +1386,7 @@ void CudaCodeGen::CompileToNVRTC(
   if (prior_device != this->device().index()) {
     at::cuda::set_device(prior_device);
   }
+  std::cerr << "      |CudaCodeGen::CompileToNVRTC| end " << getLocaleFn()() << std::endl;
 }
 
 CudaCodeGen::~CudaCodeGen() = default;

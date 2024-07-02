@@ -209,6 +209,20 @@ void initJITBindings(PyObject* module) {
 
   m.def("_jit_init", loadPythonClasses)
       .def(
+          "_jit_set_locale_fn",
+          [](py::function fn) {
+            auto wrapped_fn = [fn]() {
+              py::handle res;
+              {
+                py::gil_scoped_acquire acquire;
+                res = fn();
+              }
+              return py::cast<std::string>(res);
+            };
+            std::cerr << " SETTING FN, WHICH EVALS TO " << wrapped_fn() << std::endl;
+            torch::jit::tensorexpr::getLocaleFn() = wrapped_fn;
+          })
+      .def(
           "_jit_debug_fuser_num_cached_kernel_specs",
           torch::jit::fuser::debugNumCachedKernelSpecs)
       .def("_jit_pass_lower_all_tuples", LowerAllTuples)

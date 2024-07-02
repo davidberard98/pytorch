@@ -13,6 +13,8 @@ namespace torch {
 namespace jit {
 namespace tensorexpr {
 
+TORCH_API std::function<std::string(void)>& getLocaleFn();
+
 struct SmallSizeTPairHash {
  public:
   std::size_t operator()(const std::pair<size_t, size_t>& x) const {

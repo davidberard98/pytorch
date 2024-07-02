@@ -39,12 +39,14 @@
 #include <torch/csrc/jit/runtime/profiling_graph_executor_impl.h>
 #include <torch/csrc/jit/runtime/profiling_record.h>
 #include <torch/csrc/jit/runtime/simple_graph_executor_impl.h>
+#include <torch/csrc/jit/tensorexpr/kernel.h>
 
 #include <torch/csrc/autograd/edge.h>
 #include <torch/csrc/autograd/function.h>
 #include <torch/csrc/jit/python/update_graph_executor_opt.h>
 #include <torch/csrc/jit/runtime/logging.h>
 
+#include <iostream>
 #include <cstdint>
 #include <iterator>
 #include <memory>
@@ -572,6 +574,7 @@ GraphExecutor* getDifferentiableGraphOpExecutor(Operation& op) {
 } // namespace detail
 
 void GraphExecutorImplBase::run(Stack& stack) {
+  std::cerr << " GraphExecutorimplBase::run " << tensorexpr::getLocaleFn()() << std::endl;
   TORCH_CHECK(
       stack.size() >= num_inputs,
       "expected ",
@@ -583,8 +586,13 @@ void GraphExecutorImplBase::run(Stack& stack) {
   logging::getLogger()->addStatValue(
       logging::runtime_counters::GRAPH_EXECUTOR_INVOCATIONS, 1.0);
 
+  std::cerr << " GraphExecutorimplBase::run [before getPlanFor]" << tensorexpr::getLocaleFn()() << std::endl;
   const ExecutionPlan& plan = getPlanFor(stack);
-  InterpreterState(plan.code).run(stack);
+  std::cerr << " GraphExecutorimplBase::run [after getPlanFor]" << tensorexpr::getLocaleFn()() << std::endl;
+
+  auto is = InterpreterState(plan.code);
+  std::cerr << " GraphExecutorimplBase::run [after is construct, before is.run()]" << tensorexpr::getLocaleFn()() << std::endl;
+  is.run(stack);
   last_executed_optimized_graph = plan.graph;
 }
 
@@ -827,6 +835,7 @@ GraphExecutor::GraphExecutor(
                         std::move(function_name)))) {}
 
 void GraphExecutor::run(Stack& inputs) {
+  std::cerr << " GraphExcutor::run " << tensorexpr::getLocaleFn()() << std::endl;
   return pImpl->run(inputs);
 }
 

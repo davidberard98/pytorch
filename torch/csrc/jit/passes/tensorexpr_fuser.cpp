@@ -1334,6 +1334,7 @@ void FuseTensorExprs(
     bool add_composed_op,
     bool fuse_to_dynamic_shapes) {
   GRAPH_DUMP("Before TExprFuser: ", graph);
+  std::cerr << " Before FuseTensorExprs " << tensorexpr::getLocaleFn()() << std::endl;
 
   // Temporary change for Block code generation.
   if (tensorexpr::getTEGenerateBlockCode()) {
@@ -1356,6 +1357,7 @@ void FuseTensorExprs(
   EliminateDeadCode(graph);
 
   GRAPH_DUMP("After TExprFuser: ", graph);
+  std::cerr << " After FuseTensorExprs " << tensorexpr::getLocaleFn()() << std::endl;
 }
 
 static Operation createTensorExprOp(const Node* node) {
@@ -1365,8 +1367,11 @@ static Operation createTensorExprOp(const Node* node) {
     auto kernel =
         std::make_shared<tensorexpr::TensorExprKernel>(node->g(attr::Subgraph));
     return [kernel](Stack& stack) {
+      std::cerr << " TensorExprOp: before RF " << tensorexpr::getLocaleFn()() << std::endl;
       RECORD_FUNCTION(kernel->getKernelName(), std::vector<c10::IValue>());
+      std::cerr << " TensorExprOp: before run " << tensorexpr::getLocaleFn()() << std::endl;
       kernel->run(stack);
+      std::cerr << " TensorExprOp: after run " << tensorexpr::getLocaleFn()() << std::endl;
       return 0;
     };
   }

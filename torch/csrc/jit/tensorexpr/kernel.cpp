@@ -24,6 +24,11 @@ using namespace torch::jit::tensorexpr;
 
 namespace torch::jit::tensorexpr {
 
+std::function<std::string(void)>& getLocaleFn() {
+  static std::function<std::string(void)> locale_fn;
+  return locale_fn;
+}
+
 std::string buildErrorMessage(const std::string& s) {
   static const std::string generic_error_message =
       "This error occurred in the fuser. You can turn off the fuser with "
@@ -1687,13 +1692,18 @@ void TensorExprKernel::optimizeOwningGraph() {
 void TensorExprKernel::compile() {
   GRAPH_DUMP("TensorExprKernel graph:", graph_);
 
+  std::cerr << "  |TensorExprKernel::compile| begin " << getLocaleFn()() << std::endl;
   has_symbolic_shapes_ = !symbolic_shape_inputs_.empty();
   nInputs_ = graph_->inputs().size();
   nOutputs_ = graph_->outputs().size();
+  std::cerr << "  |TensorExprKernel::compile| before inputDebugNames " << getLocaleFn()() << std::endl;
   genInputDebugNames();
+  std::cerr << "  |TensorExprKernel::compile| after inputDebugNames " << getLocaleFn()() << std::endl;
 
   // Bind inputs to buffers.
   auto block = bindAllInputs();
+
+  std::cerr << "  |TensorExprKernel::compile| before loop " << getLocaleFn()() << std::endl;
 
   // Bind nodes to tensor compute expressions.
   for (auto const& n : graph_->nodes()) {
@@ -1765,6 +1775,8 @@ void TensorExprKernel::compile() {
     }
   }
 
+  std::cerr << "  |TensorExprKernel::compile| after loop 1 " << getLocaleFn()() << std::endl;
+
   // Move output operands from `bufs_` to `bufOutputs_`
   for (auto i : c10::irange(graph_->outputs().size())) {
     auto& output = graph_->outputs().at(i);
@@ -1833,25 +1845,37 @@ void TensorExprKernel::compile() {
     bufs_.erase(output);
   }
 
+  std::cerr << "  |TensorExprKernel::compile| after loop 2 " << getLocaleFn()() << std::endl;
+
   BackendType backendType = inferBackendTypeFromDevice(device_);
+
+  std::cerr << "  |TensorExprKernel::compile| after inferBackendTypeFromDevice " << getLocaleFn()() << std::endl;
   stmt_ = transformLoops(backendType, block);
+  std::cerr << "  |TensorExprKernel::compile| after transformLoops " << getLocaleFn()() << std::endl;
 
   for (const auto& c : constants_) {
     bufferArgs_.emplace_back(BufHandle(c.buf));
   }
+  std::cerr << "  |TensorExprKernel::compile| after constants_ loop " << getLocaleFn()() << std::endl;
 
   if (has_symbolic_shapes_) {
     tensorOutputSizes_.resize(bufOutputs_.size());
     tensorOutputStrides_.resize(bufOutputs_.size());
   }
 
+  auto codegenname = getCodeGenName(backendType);
+
+  std::cerr << "  |TensorExprKernel::compile| before codegen " << getLocaleFn()() << std::endl;
+
   // Generate code.
   codegen_ = CreateCodeGen(
-      getCodeGenName(backendType),
+      codegenname,
       stmt_,
       bufferArgs_,
       device_,
       kernel_func_name_);
+  
+  std::cerr << "  |TensorExprKernel::compile| after codegen " << getLocaleFn()() << std::endl;
 }
 
 void TensorExprKernel::recompile() {
@@ -1875,12 +1899,15 @@ TensorExprKernel::TensorExprKernel(
       pre_alloc_(pre_alloc),
       kernel_func_name_(kernel_func_name),
       symbolic_strides_(std::move(symbolic_strides)) {
+  std::cerr << "  |TensorExprKernel constructor| begin " << getLocaleFn()() << std::endl;
   optimizeOwningGraph();
+  std::cerr << "  |TensorExprKernel constructor| after optimizeOwningGraph " << getLocaleFn()() << std::endl;
 
   allow_fallback_ = fallbackAllowed();
 
   if (!allow_fallback_) {
     compile();
+    std::cerr << "  |TensorExprKernel constructor| after compile with no fallback " << getLocaleFn()() << std::endl;
     return;
   }
 
@@ -1894,6 +1921,7 @@ TensorExprKernel::TensorExprKernel(
   } catch (...) {
     use_fallback_ = true;
   }
+  std::cerr << "  |TensorExprKernel constructor| END " << getLocaleFn()() << std::endl;
 }
 
 void TensorExprKernel::run(Stack& stack) const {
@@ -2027,14 +2055,18 @@ StmtPtr TensorExprKernel::getCodeGenStmt() {
 
 void TensorExprKernel::runKernel(Stack& stack) const {
   // Set up arguments (inputs, then outputs) for kernel call.
+  std::cerr << "  BEGINNING : " << getLocaleFn()() << std::endl;
   auto inputs = last(stack, nInputs_);
   std::vector<at::Tensor> outputs;
 
+  std::cerr << "    BEFORE RUN ARGS : " << getLocaleFn()() << std::endl;
   std::vector<CodeGen::CallArg> runArgs = prepareRunArgs(inputs, outputs);
+  std::cerr << "    BEFORE CALL : " << getLocaleFn()() << std::endl;
 
   // Call the kernel.
   codegen_->call(runArgs);
 
+  std::cerr << "    BEFORE DROP : " << getLocaleFn()() << std::endl;
   // Update the stack.
   drop(stack, nInputs_);
 

@@ -30,6 +30,9 @@
 #include <torch/csrc/utils/cpp_stacktraces.h>
 #include <string>
 
+#include <iostream>
+#include <torch/csrc/jit/tensorexpr/kernel.h>
+
 #ifdef USE_RPC
 #include <torch/csrc/distributed/autograd/context/container.h>
 using torch::distributed::autograd::DistAutogradContainer;
@@ -273,6 +276,7 @@ struct InterpreterStateImpl : c10::intrusive_ptr_target {
     // if we have never run before, then we might have to return the
     // stack when we suspend, record where it starts so we return the right
     // stack
+    std::cerr << " runTemplate " << tensorexpr::getLocaleFn()() << std::endl;
     if (stack_start_ == -1) {
       TORCH_INTERNAL_ASSERT(stack.size() >= frames.back().function->n_inputs);
       stack_start_ = stack.size() - frames.back().function->n_inputs;
@@ -898,6 +902,7 @@ struct InterpreterStateImpl : c10::intrusive_ptr_target {
 #undef JIT_USE_COMPUTED_GOTO
 
   bool runImpl(Stack& stack) {
+    std::cerr << " runImpl " << tensorexpr::getLocaleFn()() << std::endl;
     if (!profiling::isProfilingOngoing()) {
       return runTemplate</*EnableProfiling*/ false>(stack);
     } else {
@@ -1098,6 +1103,7 @@ struct InterpreterStateImpl : c10::intrusive_ptr_target {
   }
 
   void run(Stack& stack) {
+  std::cerr << " InterpreterStateImpl::run " << tensorexpr::getLocaleFn()() << std::endl;
     // By the time the continuation completes the frame will be gone, so this
     // must be done before calling runImpl().
     TORCH_INTERNAL_ASSERT(!frames.empty());
@@ -1224,6 +1230,7 @@ InterpreterState::InterpreterState(const Code& code, TaskLauncher taskLauncher)
           std::move(taskLauncher))) {}
 
 void InterpreterState::run(Stack& stack) {
+  std::cerr << " InterpreterState::run " << tensorexpr::getLocaleFn()() << std::endl;
   static_cast<InterpreterStateImpl*>(pImpl.get())->run(stack);
 }
 

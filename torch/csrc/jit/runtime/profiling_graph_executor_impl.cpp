@@ -38,6 +38,9 @@
 #include <chrono>
 #include <mutex>
 
+#include <iostream>
+#include <torch/csrc/jit/tensorexpr/kernel.h>
+
 C10_DEFINE_bool(
     torch_jit_enable_new_executor,
     true,
@@ -420,6 +423,7 @@ FusionBehavior ProfilingGraphExecutorImpl::getCurrentBehavior(
 void ProfilingGraphExecutorImpl::runNoGradOptimizations(
     std::shared_ptr<Graph>& graph,
     size_t remaining_bailout_depth) {
+  std::cerr << " runNoGradOptimizations START " << tensorexpr::getLocaleFn()() << std::endl;
   GRAPH_DEBUG(
       "After customPostPasses (beginning of runNoGradOptimizations)\n", *graph);
   // runNondiffOptimization
@@ -464,11 +468,16 @@ void ProfilingGraphExecutorImpl::runNoGradOptimizations(
       FuseGraph(graph, true);
       GRAPH_DEBUG("After Fusion, before customPostPasses\n", *graph);
     }
+    std::cerr << " runNoGradOptimizations AFTER FUSE TENSOR EXPRS " << tensorexpr::getLocaleFn()() << std::endl;
 
     // Run custom post-fusion passes
+    size_t cntr = 0;
     for (const auto& passPair : getCustomPostPasses()) {
       passPair.first(graph);
+      std::cerr << " runNoGradOptimizations AFTER PASS PAIR " << cntr << " " << tensorexpr::getLocaleFn()() << std::endl;
+      cntr++;
     }
+    std::cerr << " runNoGradOptimizations AFTER CUSTOM POST PASSES " << tensorexpr::getLocaleFn()() << std::endl;
     GRAPH_DEBUG(
         "After customPostPasses, before RemoveTensorTypeSpecializations \n",
         *graph);
@@ -614,6 +623,7 @@ size_t ProfilingGraphExecutorImpl::getInstantiatedBailoutDepth() {
 const ExecutionPlan& ProfilingGraphExecutorImpl::getOptimizedPlanFor(
     Stack& stack,
     std::optional<size_t> remaining_bailout_depth) {
+  std::cerr << " getOptimizedPlanFor START " << tensorexpr::getLocaleFn()() << std::endl;
   GRAPH_DEBUG("Running ProfilingGraphExecutorImpl ", this);
 
   // TODO: instantiate simple executor when getProfilingMode() is false
@@ -631,6 +641,8 @@ const ExecutionPlan& ProfilingGraphExecutorImpl::getOptimizedPlanFor(
     }
     return *fallback_plan_;
   }
+
+  std::cerr << " getOptimizedPlanFor NOT OPT MODE " << tensorexpr::getLocaleFn()() << std::endl;
 
   // if tensorExprFuserEnabled() returns true we need to persist the very first
   // time ProfilingGraphExecutorImpl is called, so we can update it correctly
@@ -655,6 +667,8 @@ const ExecutionPlan& ProfilingGraphExecutorImpl::getOptimizedPlanFor(
     return *optimized_plan_;
   }
 
+  std::cerr << " getOptimizedPlanFor PAST BAILOUT DEPTH " << tensorexpr::getLocaleFn()() << std::endl;
+
   bool profiling_record_created_in_this_call = false;
   // if a profiling graph hasn't been created yet
   if (!pr_) {
@@ -678,23 +692,34 @@ const ExecutionPlan& ProfilingGraphExecutorImpl::getOptimizedPlanFor(
     return *profiling_plan_;
   }
 
+  std::cerr << " getOptimizedPlanFor IS READY " << tensorexpr::getLocaleFn()() << std::endl;
+
   auto copy = pr_->graph()->copy();
   ProfilingRecord::removeProfileCounter(copy->block());
+
+  std::cerr << " getOptimizedPlanFor BEFORE RUN PROFILING OPTIMIZATIONS " << tensorexpr::getLocaleFn()() << std::endl;
   runProfilingOptimizations(copy, *remaining_bailout_depth_);
   // replaces a fallback graph inserted by
   // specialize_autogradzero if one exists
+  std::cerr << " getOptimizedPlanFor BEFORE FALLBACK GRAPH " << tensorexpr::getLocaleFn()() << std::endl;
   replaceFallbackGraphWithFallbackFunction(copy->block());
+  std::cerr << " getOptimizedPlanFor BEFORE FINAL OPTIMIZATIONS " << tensorexpr::getLocaleFn()() << std::endl;
   runFinalOptimizations(copy);
+  std::cerr << " getOptimizedPlanFor BEFORE CHECK STRICT FUSION " << tensorexpr::getLocaleFn()() << std::endl;
   CheckStrictFusion(copy);
   GRAPH_DUMP("Optimized Graph: ", copy);
+  std::cerr << " getOptimizedPlanFor BEFORE ExecutionPlan creation" << tensorexpr::getLocaleFn()() << std::endl;
   optimized_plan_ = ExecutionPlan(copy, function_name_);
+  std::cerr << " getOptimizedPlanFor BEFORE getNowInSecs " << tensorexpr::getLocaleFn()() << std::endl;
   time_optimized_plan_created_ = getNowInSecs();
   // If the profiled graph was created in this call, then we can release it
   // right.
+  std::cerr << " getOptimizedPlanFor BEFORE if statement" << tensorexpr::getLocaleFn()() << std::endl;
   if (FLAGS_torch_jit_release_profiling_graph_after_optimization &&
       profiling_record_created_in_this_call) {
     clearTheGraphCompilationIntermediateGraphs();
   }
+  std::cerr << " getOptimizedPlanFor BEFORE return " << tensorexpr::getLocaleFn()() << std::endl;
   return *optimized_plan_;
 }
 
@@ -705,6 +730,7 @@ const ExecutionPlan& ProfilingGraphExecutorImpl::getPlanFor(
 
   // IMPORTANT: This is a hot path of calling a torchscript function. Try not to
   // add any code above this.
+
   if (optimized_plan_) {
     if (FLAGS_torch_jit_release_profiling_graph_after_optimization &&
         !is_graph_extra_memory_released_) {
@@ -717,7 +743,10 @@ const ExecutionPlan& ProfilingGraphExecutorImpl::getPlanFor(
     return *optimized_plan_;
   }
   // if depth is not set, use
-  return getOptimizedPlanFor(stack, remaining_bailout_depth);
+  std::cerr << " getPlanFor pgei BEFORE getOptimizedPlanFor " << tensorexpr::getLocaleFn()() << std::endl;
+  auto& pln = getOptimizedPlanFor(stack, remaining_bailout_depth);
+  std::cerr << " getPlanFor pgei AFTER getOptimizedPlanFor " << tensorexpr::getLocaleFn()() << std::endl;
+  return pln;
 }
 
 GraphExecutorState ProfilingGraphExecutorImpl::getDebugState() {
