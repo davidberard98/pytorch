@@ -1429,6 +1429,7 @@ class GraphLowering(torch.fx.Interpreter):
                         if n.meta["val"]._is_view() or isinstance(
                             result.data, ir.BaseView
                         ):
+                            breakpoint()
                             result = ir.ExternKernel.require_stride_order(
                                 result,
                                 ir.get_stride_order(strides),

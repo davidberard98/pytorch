@@ -118,6 +118,7 @@ def config_of(
         Roughly follow triton code here:
         https://github.com/openai/triton/blob/5282ed890d453e10b9ee30076ef89115dd197761/python/triton/runtime/jit.py#L208-L222
         """
+        breakpoint()
         if isinstance(x, TensorArg):
             if include_tensor:
                 offset_aligned = V.graph.sizevars.statically_known_multiple_of(

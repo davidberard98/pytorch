@@ -2146,6 +2146,13 @@ def as_storage_and_layout(
             freeze=freeze,
         )
         return buffer, x.layout
+    if isinstance(x, DtypeView):
+        # TODO copy the comment from ReinterpretView but make it updated for this branch
+        buffer, layout = as_storage_and_layout(
+            x.data,
+            freeze=freeze,
+        )
+        return buffer, layout
     raise NotImplementedError
 
 
@@ -2647,6 +2654,7 @@ class ReinterpretView(BaseView):
         return list(self.layout.stride)
 
     def make_loader(self):
+        breakpoint()
         def loader(index):
             indexer = self.layout.make_indexer()
             tmp_loader = ops.load(self.get_name(), indexer(index))
@@ -2698,6 +2706,7 @@ class DtypeView(BaseView):
 
     @classmethod
     def create(cls, x, new_dtype):
+        # breakpoint()
         if is_storage_and_layout(x):
             storage, old_layout = as_storage_and_layout(x)
             new_layout = FixedLayout(
@@ -2708,6 +2717,8 @@ class DtypeView(BaseView):
                 old_layout.offset,
             )
             return ReinterpretView(storage, new_layout)
+
+        # breakpoint()
         return DtypeView(x, new_dtype)
 
     def __str__(self) -> str:
@@ -2722,13 +2733,21 @@ class DtypeView(BaseView):
     def get_size(self):
         return self.data.get_size()
 
+    def get_stride(self):
+        return self.data.get_stride()
+
     def make_loader(self):
+        breakpoint()
         inner = self.data.make_loader()
 
         def loader(idx):
             return ops.to_dtype_bitcast(inner(idx), self.target_dtype, self.data.dtype)
 
         return loader
+
+    def codegen_reference(self, *args, **kwargs):
+        # breakpoint()
+        return super().codegen_reference(*args, **kwargs)
 
 
 class SliceView(View):
@@ -4147,7 +4166,7 @@ class InputsKernel(OperationBuffer):
             return cls.unwrap_storage_for_input(x)
         if isinstance(x, TorchBindObject):
             return x
-        assert isinstance(x, (Buffer, ReinterpretView)), x
+        assert isinstance(x, (Buffer, ReinterpretView, DtypeView)), x
         return x
 
     @staticmethod
@@ -4713,6 +4732,8 @@ class ExternKernel(InputsKernel):
             return cls.realize_input(x.data)
         if isinstance(x, ReinterpretView):
             return ReinterpretView(cls.realize_input(x.data), x.get_layout())
+        if isinstance(x, DtypeView):
+            return DtypeView(cls.realize_input(x.data), x.dtype)
         if isinstance(x, BaseView):
             x.realize()
             if is_storage_and_layout(x.unwrap_view()):
@@ -5267,6 +5288,7 @@ class UserDefinedTritonKernel(ExternKernel):
             tuple(constant_args),
             kwargs,
         )
+        breakpoint()
         self.kernel_idx = kernel_idx
         self.grid = grid
 
