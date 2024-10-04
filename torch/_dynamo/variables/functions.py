@@ -1155,3 +1155,8 @@ class TritonKernelVariable(VariableTracker):
         if isinstance(arg, SymNodeVariable):
             return ConstantVariable.create(arg.evaluate_expr())
         return arg
+
+    def arg_is_constant(self, arg: Any) -> Any:
+        from .constant import ConstantVariable
+
+        return isinstance(arg, ConstantVariable)

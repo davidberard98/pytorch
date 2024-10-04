@@ -961,6 +961,13 @@ class TritonHOPifier:
             constexprs = variable.kernel.fn.constexprs
 
         for idx, arg_name in enumerate(variable.kernel.arg_names):
+            if arg_name in combined_args_raw and variable.arg_is_constant(
+                combined_args_raw[arg_name]
+            ):
+                constexprs.append(idx)
+                breakpoint()
+
+        for idx, arg_name in enumerate(variable.kernel.arg_names):
             if idx in constexprs:
                 if arg_name in combined_args_raw:
                     # [Note: Specialize tl.constexpr args in user-defined triton kernels]
@@ -1067,3 +1074,6 @@ class TraceableTritonKernelWrapper:
         if isinstance(arg, (torch.SymInt, torch.SymBool, torch.SymFloat)):
             return guard_scalar(arg)
         return arg
+
+    def arg_is_constant(self, arg: Any) -> Any:
+        return isinstance(arg, (int, float, bool, str))
